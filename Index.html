@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000; --panel:#161b24; --panel-2:#1e2531; --line:#2b3242;
+    --text:#e8eaf0; --muted:#838da0; --amber:#e8a33d;
+    --phase1:#5b8def; --phase2:#a374e8; --phase3:#ef8b5c; --mapless:#38bdf8; --me4:#f06292;
+    --ok:#4fd1a8; --danger:#e8636b;
+  }
+  html.light{ --bg:#f3f4f7; --panel:#fff; --panel-2:#f0f1f5; --line:#dde0e8; --text:#1a1d24; --muted:#6b7280; }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:'Space Grotesk',sans-serif; min-height:100vh; padding:24px 16px 60px; transition:.25s; }
+  .wrap{max-width:900px;margin:0 auto;}
+  header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:16px; }
+  header h1{ font-size:21px; font-weight:800; margin:0; }
+  .header-right{ display:flex; gap:8px; }
+  .mode-btn{ background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:13px; font-weight:700; padding:8px 12px; border-radius:100px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .mode-btn.admin-on{ border-color:var(--ok); color:var(--ok); }
+  .tabs{ display:flex; gap:6px; margin-bottom:18px; background:var(--panel); padding:5px; border-radius:12px; border:1px solid var(--line); flex-wrap:wrap; }
+  .tab-btn{ background:transparent; border:none; color:var(--muted); font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13.5px; padding:9px 16px; border-radius:8px; cursor:pointer; }
+  .tab-btn.active{ background:var(--amber); color:#1a1206; }
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; position:relative; overflow:hidden; }
+  /* ===== Gradient Border Effect (spotlight follows the cursor) ===== */
+  .panel::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    padding:1.5px;
+    background:radial-gradient(220px circle at var(--x,50%) var(--y,50%), var(--amber), transparent 70%);
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .25s ease;
+  }
+  .panel.glow-active::before{ opacity:1; }
+  .panel h2{ font-size:14px; font-weight:700; margin:0 0 16px; color:var(--amber); text-transform:uppercase; letter-spacing:.4px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  label{ display:block; font-size:11.5px; color:var(--muted); margin-bottom:6px; font-weight:700; }
+  input, select{ width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:11px 12px; font-family:'Space Grotesk',sans-serif; font-size:15px; outline:none; }
+  input:focus, select:focus{ border-color:var(--amber); }
+  .btn{ background:var(--amber); color:#1a1206; border:none; font-weight:800; font-size:14px; padding:12px 22px; border-radius:9px; cursor:pointer; }
+  .btn.secondary{ background:transparent; border:1px solid var(--line); color:var(--text); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .actions-row{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+  .msg{ margin-top:12px; font-size:13px; padding:10px 14px; border-radius:8px; }
+  .msg.ok{ background:rgba(79,209,168,.1); color:var(--ok); border:1px solid rgba(79,209,168,.3); }
+  .msg.err{ background:rgba(232,99,107,.1); color:var(--danger); border:1px solid rgba(232,99,107,.3); }
+
+  /* Check-in card */
+  .id-card{ text-align:center; }
+  .id-card .big-name{ font-size:24px; font-weight:800; margin:6px 0 2px; }
+  .id-card .row-info{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:16px 0; }
+  .info-chip{ background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:12px 16px; min-width:100px; }
+  .info-chip .lab{ font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:4px; }
+  .info-chip .val{ font-size:16px; font-weight:800; }
+  .info-chip.day .val{ color:var(--amber); }
+  .switch-link{ margin-top:10px; font-size:12.5px; color:var(--muted); background:none; border:none; text-decoration:underline; cursor:pointer; }
+
+  /* Calendar */
+  .cal-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .cal-nav .cal-title{ font-weight:800; font-size:15px; }
+  .cal-nav button{ background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:6px 12px; cursor:pointer; font-size:14px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-day{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:13px; font-weight:700; border:1px solid var(--line); }
+  .cal-day.present{ background:rgba(79,209,168,.18); color:var(--ok); border-color:rgba(79,209,168,.4); }
+  .cal-day.absent{ background:rgba(232,99,107,.18); color:var(--danger); border-color:rgba(232,99,107,.4); }
+  .cal-day.today{ background:rgba(232,163,61,.15); color:var(--amber); border-color:var(--amber); }
+  .cal-day.future{ color:var(--muted); opacity:.4; }
+  .cal-day.inactive{ color:var(--muted); opacity:.25; }
+  .legend{ display:flex; gap:14px; margin-top:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .dotleg{ width:10px; height:10px; border-radius:3px; display:inline-block; }
+
+  /* Stage picker */
+  .phase-block{ margin-top:16px; }
+  .phase-title{ font-size:11.5px; font-weight:800; text-transform:uppercase; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--line); }
+  .phase-title.phase1{ color:var(--phase1); } .phase-title.phase2{ color:var(--phase2); }
+  .phase-title.phase3{ color:var(--phase3); } .phase-title.mapless{ color:var(--mapless); } .phase-title.me4{ color:var(--me4); }
+  .stage-picker{ display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:8px; }
+  .stage-opt{ border:1px solid var(--line); background:var(--panel); color:var(--text); padding:10px 8px; border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer; text-align:center; }
+  .stage-opt.current{ border-color:var(--amber); background:rgba(232,163,61,.12); color:var(--amber); }
+  .stage-opt.done{ opacity:.6; text-decoration:line-through; }
+  .stage-opt:not(.done):hover{ border-color:var(--amber); }
+
+  /* Admin table */
+  table{ width:100%; border-collapse:collapse; }
+  th{ text-align:left; font-size:11px; color:var(--muted); font-weight:700; padding:8px; border-bottom:1px solid var(--line); }
+  td{ padding:10px 8px; border-bottom:1px solid var(--line); font-size:13px; }
+  .mono{ font-family:'JetBrains Mono',monospace; color:var(--muted); font-size:12px; }
+  .badge{ display:inline-block; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:700; }
+  .badge.present{ background:rgba(79,209,168,.15); color:var(--ok); }
+  .badge.absent{ background:rgba(232,99,107,.15); color:var(--danger); }
+  .del-btn{ background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:15px; }
+  .del-btn:hover{ color:var(--danger); }
+  .empty{ text-align:center; padding:26px 10px; color:var(--muted); font-size:13px; }
+  @media (max-width:600px){
+    .row-info{ gap:6px !important; }
+    .info-chip{ min-width:80px; padding:10px 12px; }
+  }
+
+  /* ===== 3D Glass Carousel (Check In / Attendance / My Stage) ===== */
+  #carousel-wrap{ margin-bottom:18px; }
+  #carousel{
+    position:relative;
+    height:250px;
+    perspective:1400px;
+    margin:6px 0 16px;
+    transition:height .4s ease;
+  }
+  #carousel.has-expanded{ height:600px; }
+  .carousel-slide{
+    position:absolute;
+    top:0; left:50%;
+    --sw:min(58vw, 230px);
+    --sh:230px;
+    width:var(--sw);
+    height:var(--sh);
+    margin-left:calc(-1 * var(--sw) / 2);
+    overflow:visible;
+    transition:width .4s ease, height .4s ease, margin-left .4s ease,
+               transform .6s cubic-bezier(.22,.61,.36,1), opacity .5s ease, filter .5s ease;
+    will-change:transform;
+  }
+  .carousel-slide.expanded{
+    --sw:min(92vw, 480px);
+    --sh:580px;
+    z-index:40 !important;
+  }
+  .carousel-slide .panel{ height:100%; margin-bottom:0; position:relative; overflow:hidden; }
+  .card-peek{ display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; cursor:pointer; text-align:center; }
+  .card-peek .peek-icon{ font-size:32px; }
+  .card-peek .peek-title{ font-size:14px; font-weight:800; }
+  .card-peek .peek-hint{ font-size:11px; color:var(--muted); }
+  .carousel-slide.expanded .card-peek{ display:none; }
+  .card-full{ display:none; position:relative; height:100%; }
+  .carousel-slide.expanded .card-full{ display:block; }
+  .card-close{
+    position:absolute; top:-6px; right:-6px; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--text); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:14px; font-weight:800; z-index:5;
+  }
+  .card-close:hover{ border-color:var(--danger); color:var(--danger); }
+  .carousel-nav{ display:flex; align-items:center; justify-content:center; gap:16px; }
+  .carousel-nav button{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    width:38px; height:38px; border-radius:50%; cursor:pointer; font-size:16px; font-weight:800;
+  }
+  .carousel-nav button:hover{ border-color:var(--amber); }
+  .carousel-dots{ display:flex; gap:8px; }
+  .carousel-dots .dot{ width:8px; height:8px; border-radius:50%; background:var(--line); cursor:pointer; transition:.2s; }
+  .carousel-dots .dot.active{ background:var(--amber); width:20px; border-radius:4px; }
+  .locked-hint{ text-align:center; color:var(--muted); font-size:13px; padding:30px 10px; }
+
+  /* ===== Dashboard (admin-only) ===== */
+  .dash-filters{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .dash-filters select{ width:auto; min-width:130px; font-size:13px; padding:8px 10px; }
+  .dash-filters .btn{ padding:8px 16px; font-size:13px; }
+  .dash-cards{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:10px; margin-bottom:20px; }
+  .dash-card{ background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:12px; position:relative; }
+  .dash-card .dc-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+  .dash-card .dc-pc{ font-weight:800; font-size:14px; color:var(--mapless); }
+  .dash-card .dc-badge{ background:var(--mapless); color:#04222c; font-weight:800; font-size:11px; border-radius:100px; padding:2px 8px; }
+  .dash-card .dc-name{ font-size:12.5px; font-weight:700; color:var(--text); }
+  .dash-card .dc-email{ font-size:11px; color:var(--muted); margin-bottom:8px; word-break:break-all; }
+  .dash-card .dc-queue{ display:inline-block; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:3px 7px; font-size:10.5px; color:var(--mapless); margin:2px 3px 0 0; }
+  .dash-section{ margin-bottom:20px; }
+  .dash-section-title{ display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; font-weight:800; color:var(--amber); text-transform:uppercase; letter-spacing:.4px; margin-bottom:10px; }
+  .dash-section-title .count-note{ color:var(--muted); font-weight:600; text-transform:none; font-size:11.5px; }
+  .dash-table-wrap{ overflow-x:auto; max-height:420px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; }
+  .dash-table-wrap table{ min-width:1100px; }
+  .dash-table-wrap th{ position:sticky; top:0; background:var(--panel); z-index:2; white-space:nowrap; }
+  .dash-table-wrap td{ white-space:nowrap; font-size:12.5px; }
+  .dash-badge-pass{ padding:2px 8px; border-radius:100px; font-size:11px; font-weight:800; }
+  .dash-badge-pass.QA{ background:rgba(79,209,168,.15); color:var(--ok); }
+  .dash-badge-pass.FP{ background:rgba(232,99,107,.15); color:var(--danger); }
+  .dash-qtable{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .dash-qtable th, .dash-qtable td{ padding:8px 10px; border-bottom:1px solid var(--line); text-align:center; }
+  .dash-qtable th:first-child, .dash-qtable td:first-child{ text-align:left; }
+  .dash-qtable tr:last-child{ font-weight:800; color:var(--amber); }
+  .dash-qtable .qn{ color:var(--mapless); }
+  .dash-modrow{ margin-bottom:10px; }
+  .dash-modrow .mr-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:4px; }
+  .dash-modrow .mr-bar{ height:6px; background:var(--panel-2); border-radius:4px; overflow:hidden; }
+  .dash-modrow .mr-fill{ height:100%; background:var(--ok); border-radius:4px; }
+  .dash-objcount{ display:flex; gap:30px; flex-wrap:wrap; }
+  .dash-objcount .big{ font-size:32px; font-weight:800; color:var(--mapless); }
+  .dash-objcount .lab{ font-size:11px; color:var(--muted); text-transform:uppercase; font-weight:700; margin-bottom:2px; }
+  .dash-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .dash-chip{ background:var(--panel-2); border:1px solid var(--line); border-radius:100px; padding:6px 12px; font-size:12px; }
+  .dash-chip b{ color:var(--amber); margin-left:4px; }
+
+
+  /* ===== Quality (admin-only) ===== */
+  .qual-stat-card{
+    text-align:center; padding:30px 20px; background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line); border-radius:14px; margin-bottom:22px;
+  }
+  .qual-stat-card .qs-icon{ font-size:26px; margin-bottom:6px; }
+  .qual-stat-card .qs-num{ font-size:42px; font-weight:800; color:var(--mapless); line-height:1.1; }
+  .qual-stat-card .qs-label{ font-size:12.5px; color:var(--muted); font-weight:700; margin-top:4px; }
+  .qual-history-title{ display:flex; align-items:center; gap:8px; font-size:18px; font-weight:800; margin:0 0 14px; }
+  .qual-history-title .bar{ height:3px; width:60px; background:linear-gradient(90deg,var(--amber),var(--mapless)); border-radius:3px; margin-top:2px; }
+  .qual-cards{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
+  .qual-card{ background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .qual-card .qc-title{ font-weight:800; font-size:14px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+  .qual-card .qc-meta{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:5px; }
+  .qual-card .qc-meta b{ color:var(--text); font-weight:700; }
+  .qual-metric{ display:flex; justify-content:space-between; align-items:center; background:var(--panel); border-left:3px solid var(--ok); border-radius:6px; padding:8px 12px; margin-top:8px; font-size:12.5px; }
+  .qual-metric .qm-val{ color:var(--ok); font-weight:800; }
+
+  /* ===== Teams (admin-only) ===== */
+  .team-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:12px; }
+  .team-pc{ position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center; text-align:center;
+    border-radius:14px; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; cursor:pointer; border:1px solid; padding:4px; transition:transform .15s ease; }
+  .team-pc.present{ background:rgba(79,209,168,.15); color:var(--ok); border-color:rgba(79,209,168,.45); }
+  .team-pc.absent{ background:rgba(232,99,107,.16); color:var(--danger); border-color:rgba(232,99,107,.45); }
+  .team-pc:hover{ transform:translateY(-2px); }
+  .team-pc .warn{ position:absolute; top:-8px; right:-8px; width:24px; height:24px; border-radius:50%; background:var(--amber);
+    color:#1a1206; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; border:2px solid var(--panel); }
+  .team-legend{ display:flex; gap:14px; margin-top:16px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+  .team-legend span{ display:flex; align-items:center; gap:6px; }
+
+  #team-modal{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:16px; }
+  #team-modal.open{ display:flex; }
+  .tm-box{ background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:26px 22px; width:100%; max-width:380px;
+    max-height:92vh; overflow-y:auto; text-align:center; position:relative; }
+  .tm-close{ position:absolute; top:12px; right:12px; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    width:32px; height:32px; border-radius:50%; cursor:pointer; font-weight:800; }
+  .tm-pc{ font-size:20px; font-weight:800; margin:6px 0; }
+  .tm-status{ font-size:12.5px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; margin-bottom:14px; }
+  .tm-status.present{ color:var(--ok); } .tm-status.absent{ color:var(--danger); }
+  .tm-chip{ background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+  .tm-chip .lab{ font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:4px; }
+  .tm-chip .val{ font-size:15px; font-weight:800; word-break:break-all; }
+  .tm-box textarea{ width:100%; min-height:90px; resize:vertical; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-family:'Space Grotesk',sans-serif; font-size:14px; outline:none; }
+  .tm-box textarea:focus{ border-color:var(--amber); }
+  .tm-box label{ text-align:left; margin-top:10px; }
+
+  .batch-bar{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .batch-chip{ background:var(--panel); border:1px solid var(--line); color:var(--text); font-family:'Space Grotesk',sans-serif;
+    font-weight:700; font-size:13px; padding:9px 16px; border-radius:100px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+  .batch-chip .cnt{ background:var(--panel-2); color:var(--muted); border-radius:100px; padding:1px 8px; font-size:11px; }
+  .batch-chip:hover{ border-color:var(--amber); }
+  .batch-chip.active{ background:var(--amber); color:#1a1206; border-color:var(--amber); }
+  .batch-chip.active .cnt{ background:rgba(0,0,0,.18); color:#1a1206; }
+  .batch-summary{ font-size:12.5px; color:var(--muted); margin:-6px 0 14px; }
+  .batch-summary b{ color:var(--text); }
+
+  .stars{ display:flex; justify-content:center; gap:6px; margin:2px 0 4px; }
+  .stars span{ font-size:30px; line-height:1; cursor:pointer; color:var(--line); user-select:none; transition:transform .12s ease, color .12s ease; }
+  .stars span:hover{ transform:scale(1.15); }
+  .stars span.on{ color:var(--amber); }
+  .fb-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:2px; }
+  .fb-btn{ background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Space Grotesk',sans-serif;
+    font-weight:800; font-size:13px; padding:10px 8px; border-radius:10px; cursor:pointer; }
+  .fb-btn:hover{ border-color:var(--amber); }
+  .fb-btn.active[data-fb="Pass"], .fb-btn.active[data-fb="P"]{ background:rgba(79,209,168,.18); border-color:var(--ok); color:var(--ok); }
+  .fb-btn.active[data-fb="Failed"]{ background:rgba(232,99,107,.18); border-color:var(--danger); color:var(--danger); }
+  .fb-btn.active[data-fb="Pending"]{ background:rgba(232,163,61,.18); border-color:var(--amber); color:var(--amber); }
+  .fb-btn.active[data-fb="Dropped out"]{ background:rgba(163,116,232,.2); border-color:var(--phase2); color:var(--phase2); }
+
+  .day-tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:2px; }
+  .day-tab{ position:relative; background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Space Grotesk',sans-serif;
+    font-weight:800; font-size:13px; padding:9px 6px; border-radius:10px; cursor:pointer; }
+  .day-tab:hover{ border-color:var(--amber); }
+  .day-tab.active{ background:var(--amber); color:#1a1206; border-color:var(--amber); }
+  .day-tab.has::after{ content:""; position:absolute; top:6px; right:7px; width:7px; height:7px; border-radius:50%; background:var(--ok); }
+  .tr-select{ cursor:pointer; font-weight:700; text-align:center; text-align-last:center; }
+  .tr-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
+  .tr-btn{ background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Space Grotesk',sans-serif;
+    font-weight:700; font-size:12.5px; padding:8px 12px; border-radius:10px; cursor:pointer; }
+  .tr-btn:hover{ border-color:var(--amber); }
+  .tr-btn.active{ background:rgba(56,189,248,.16); border-color:var(--mapless); color:var(--mapless); }
+  .att-summary{ font-size:12.5px; color:var(--muted); margin:2px 0 8px; text-align:left; }
+  .att-summary b{ color:var(--text); }
+  .att-chips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .att-chip{ min-width:34px; padding:3px 6px 2px; border-radius:7px; font-size:11.5px; font-weight:800; text-align:center; line-height:1.1;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--muted); }
+  .att-chip small{ display:block; font-size:8.5px; font-weight:700; opacity:.75; margin-top:1px; }
+  .stage-box{ background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:10px 14px; text-align:left; }
+  .stage-box .st-name{ font-size:15px; font-weight:800; }
+  .stage-box .st-sub{ font-size:11.5px; color:var(--muted); margin-top:3px; }
+  .stage-bar{ height:5px; background:var(--line); border-radius:4px; overflow:hidden; margin-top:8px; }
+  .stage-bar > div{ height:100%; background:var(--amber); border-radius:4px; }
+
+  /* ===== Attendance tab ===== */
+  .att-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  .att-table{ border-collapse:separate; border-spacing:0; min-width:100%; }
+  .att-table th, .att-table td{ padding:6px 5px; border-bottom:1px solid var(--line); text-align:center; font-size:12px; white-space:nowrap; }
+  .att-table th{ background:var(--panel-2); color:var(--muted); font-weight:700; position:sticky; top:0; }
+  .att-table td.nm, .att-table th.nm{ text-align:left; position:sticky; left:0; background:var(--panel); z-index:2; min-width:170px; max-width:220px; overflow:hidden; text-overflow:ellipsis; padding-left:10px; }
+  .att-table tr.dropped td.nm{ background:#e06666; color:#fff; font-weight:800; }
+  .att-table tr.dropped td{ background:#e06666; }
+  .att-cell{ display:inline-block; min-width:32px; padding:5px 6px; border-radius:6px; font-weight:800; cursor:pointer; background:var(--panel-2); border:1px solid var(--line); color:var(--muted); }
+  .att-cell:hover{ outline:2px solid var(--amber); }
+  .att-block-title{ display:flex; align-items:center; gap:10px; margin:0 0 10px; font-size:14px; font-weight:800; }
+  .att-block-title .tag{ background:#000; color:#fff; border-radius:6px; padding:3px 10px; }
+  .att-block-title .sub{ color:var(--muted); font-weight:600; font-size:12px; }
+  #att-modal{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:16px; }
+  #att-modal.open{ display:flex; }
+
+  /* ===== Header: profile chip + Logout / theme / Refresh pills ===== */
+  .header-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+  #pf-chip{ display:none; align-items:center; gap:12px; padding:6px 20px 6px 6px; border-radius:24px;
+    background:var(--panel); border:1px solid var(--line); box-shadow:0 2px 14px rgba(0,0,0,.18); }
+  .pf-avatar{ position:relative; width:52px; height:52px; flex:0 0 52px; }
+  .pf-avatar img, .pf-initials{ position:absolute; inset:0; width:100%; height:100%; border-radius:50%; object-fit:cover;
+    border:2px solid #5bc8f5; box-shadow:0 0 12px rgba(91,200,245,.55); }
+  .pf-initials{ display:none; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#fff;
+    background:linear-gradient(135deg,#000,#0b4a94); }
+  .pf-text{ display:flex; flex-direction:column; line-height:1.25; min-width:0; }
+  .pf-name{ font-size:15px; font-weight:800; color:var(--text); white-space:nowrap; }
+  .pf-title{ font-size:13px; font-weight:800; color:#38bdf8; white-space:nowrap; }
+  .hbtn{ display:inline-flex; align-items:center; gap:7px; background:var(--panel); border:1px solid var(--line); color:var(--text);
+    font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:800; padding:11px 18px; border-radius:100px; cursor:pointer; }
+  .hbtn:hover{ border-color:#5bc8f5; }
+  .hbtn.primary{ background:#6ee7f9; border-color:#6ee7f9; color:#04222c; }
+  .hbtn.primary:hover{ filter:brightness(1.07); }
+  .hbtn:disabled{ opacity:.6; cursor:wait; }
+  .hbtn .spin{ display:inline-block; }
+  .hbtn.busy .spin{ animation:hspin .8s linear infinite; }
+  @keyframes hspin{ to{ transform:rotate(360deg); } }
+
+  /* ===== Custom scrollbar (JS-driven, guaranteed visible on every device) ===== */
+  .card-scroll{
+    height:100%;
+    overflow-y:auto;
+    padding-right:18px;
+    box-sizing:border-box;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; /* Firefox: hide native, we render our own */
+  }
+  .card-scroll::-webkit-scrollbar{ width:0; height:0; } /* Chrome/Safari/Edge: hide native, we render our own */
+  .custom-scrollbar{
+    position:absolute; top:34px; right:2px; bottom:6px; width:10px;
+    background:var(--panel-2); border-radius:6px;
+    opacity:0; transition:opacity .25s ease; pointer-events:none;
+  }
+  .custom-scrollbar.visible{ opacity:1; }
+  .custom-scrollbar-thumb{
+    position:absolute; left:0; right:0; top:0; border-radius:6px;
+    background-image:url('data:image/png;base64,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');
+    background-repeat:no-repeat;
+    background-position:center;
+    background-size:16px 24px;
+    background-color:rgba(232,163,61,.22);
+    min-height:34px;
+    transition:top .05s linear;
+  }
+
+  /* ===== Splash Screen: "meeg" rising out of glowing water (water line = mid-screen) ===== */
+  body.has-splash{ overflow:hidden; }
+  #splash{
+    position:fixed; inset:0; z-index:9999;
+    background:#000;
+    overflow:hidden;
+    cursor:pointer;
+    transition:opacity .8s ease, visibility .8s ease;
+  }
+  #splash.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+
+  .splash-glow{
+    position:absolute; left:50%; top:50%;
+    width:75vw; height:75vw; max-width:640px; max-height:640px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(232,163,61,.55) 0%, rgba(232,163,61,.16) 35%, transparent 70%);
+    filter:blur(12px);
+    animation:splashGlowPulse 2.4s ease-in-out infinite;
+    z-index:1;
+  }
+  @keyframes splashGlowPulse{
+    0%,100%{ opacity:.7; transform:translate(-50%,-50%) scale(1); }
+    50%{ opacity:1; transform:translate(-50%,-50%) scale(1.08); }
+  }
+
+  .splash-text-wrap{
+    position:absolute; left:0; right:0; bottom:50%; z-index:3; overflow:hidden;
+    height:9rem; width:100%;
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  .splash-text{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:800;
+    font-size:clamp(3rem, 16vw, 7.5rem);
+    color:#fff4d6;
+    letter-spacing:2px;
+    text-shadow:
+      0 0 10px #e8a33d,
+      0 0 25px #e8a33d,
+      0 0 55px #e8a33d,
+      0 0 95px rgba(232,163,61,.65);
+    transform:translateY(160%);
+    opacity:0;
+    animation:splashEmerge 2.4s cubic-bezier(.19,1,.22,1) forwards;
+    animation-delay:.3s;
+  }
+  @keyframes splashEmerge{
+    0%{ transform:translateY(160%); opacity:0; }
+    55%{ opacity:1; }
+    70%{ transform:translateY(-8%); }
+    85%{ transform:translateY(4%); }
+    100%{ transform:translateY(0%); opacity:1; }
+  }
+
+  .splash-skip{
+    position:absolute; bottom:18px; left:50%; transform:translateX(-50%); z-index:5;
+    color:var(--muted); font-size:11.5px; opacity:0; animation:splashSkipFade .6s ease forwards; animation-delay:1.8s;
+  }
+  @keyframes splashSkipFade{ to{ opacity:1; } }
+
+
+</style>
+</head>
+<body class="has-splash">
+
+<!-- ===================== SPLASH SCREEN ===================== -->
+<div id="splash">
+  <div class="splash-glow"></div>
+  <div class="splash-text-wrap">
+    <div class="splash-text">meeg</div>
+  </div>
+  <div class="splash-skip">Tap to skip</div>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1> Portal</h1>
+    <div class="header-right">
+      <div id="pf-chip">
+        <div class="pf-avatar">
+          <img id="pf-img" alt="" referrerpolicy="no-referrer" style="display:none">
+          <div class="pf-initials" id="pf-initials"></div>
+        </div>
+        <div class="pf-text"><div class="pf-name" id="pf-name"></div><div class="pf-title" id="pf-title"></div></div>
+      </div>
+      <button class="hbtn" id="logout-btn" style="display:none">⏻ Logout</button>
+      <button class="hbtn" id="mode-toggle"><span id="mode-icon">☀️</span><span id="mode-label">Light</span></button>
+      <button class="hbtn primary" id="refresh-btn"><span class="spin">🔄</span> Refresh</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="carousel">🚀 My Progress</button>
+    <button class="tab-btn" data-tab="dashboard" id="dashboard-tab-btn" style="display:none">📊 Dashboard</button>
+    <button class="tab-btn" data-tab="quality" id="quality-tab-btn" style="display:none">✅ Quality</button>
+    <button class="tab-btn" data-tab="teams" id="teams-tab-btn" style="display:none">👥 Teams</button>
+    <button class="tab-btn" data-tab="attendance" id="attendance-tab-btn" style="display:none">📅 Attendance</button>
+    <button class="tab-btn" data-tab="admin" id="admin-tab-btn" style="display:none">🛠 Admin</button>
+  </div>
+
+  <!-- ===================== CAROUSEL: Check In / Attendance / My Stage ===================== -->
+  <div id="tab-carousel">
+    <div id="carousel-wrap">
+      <div id="carousel">
+
+        <!-- SLIDE 1: CHECK IN -->
+        <div class="carousel-slide" data-slide="0">
+          <div class="panel">
+            <div class="card-peek">
+              <div class="peek-icon">✅</div>
+              <div class="peek-title">Check In</div>
+              <div class="peek-hint">Tap to open</div>
+            </div>
+            <div class="card-full">
+              <button class="card-close" data-idx="0">✕</button>
+              <div class="card-scroll" id="card-scroll-0">
+                <h2 id="ci-title">Check In For Today</h2>
+                <div id="checkin-form">
+                  <div class="grid">
+                    <div><label>National ID</label><input id="ci-nid" placeholder="Enter your National ID" inputmode="numeric"></div>
+                  </div>
+                  <div class="actions-row"><button class="btn" id="ci-start-btn">Sign in</button><button class="btn secondary" id="ci-register-link">Login</button></div>
+                  <div id="ci-pass-wrap" style="display:none;margin-top:14px">
+                    <label>Password</label>
+                    <input id="ci-pass" type="password" placeholder="Enter your password" autocomplete="current-password">
+                    <div class="actions-row">
+                      <button class="btn" id="ci-login-btn">Login</button>
+                      <button class="btn secondary" id="ci-pass-cancel">Cancel</button>
+                    </div>
+                  </div>
+                  <div id="ci-msg"></div>
+                </div>
+
+                <div id="register-form" style="display:none">
+                  <div class="grid">
+                    <div><label>National ID</label><input id="rg-nid" inputmode="numeric" maxlength="14" placeholder="14 digits"></div>
+                    <div><label>Name</label><input id="rg-name" placeholder="Full name" autocomplete="name"></div>
+                    <div><label>Phone number</label><input id="rg-phone" type="tel" inputmode="tel" placeholder="01xxxxxxxxx" autocomplete="tel"></div>
+                    <div><label>Gmail</label><input id="rg-gmail" type="email" placeholder="name@gmail.com" autocomplete="email"></div>
+                    <div><label>Shift</label>
+                      <select id="rg-shift"><option value="">Select…</option><option value="ON">ON</option><option value="N">N</option><option value="M">M</option></select>
+                    </div>
+                    <div><label>Location</label>
+                      <select id="rg-location"><option value="">Select…</option><option value="NC">NC</option><option value="SF">SF</option></select>
+                    </div>
+                  </div>
+                  <div class="actions-row">
+                    <button class="btn" id="rg-submit">Register</button>
+                    <button class="btn secondary" id="rg-back">Back to Check In</button>
+                  </div>
+                  <div id="rg-msg"></div>
+                </div>
+
+                <div id="checkin-card" class="id-card" style="display:none">
+                  <div class="big-name" id="ci-name">—</div>
+                  <div class="row-info">
+                    <div class="info-chip"><div class="lab">PC</div><div class="val" id="ci-pc">—</div></div>
+                    <div class="info-chip"><div class="lab">Yubikey</div><div class="val" id="ci-flash">—</div></div>
+                    <div class="info-chip"><div class="lab">Room</div><div class="val" id="ci-room">—</div></div>
+                    <div class="info-chip day"><div class="lab">Day</div><div class="val" id="ci-day">—</div></div>
+                  </div>
+                  <div class="actions-row" style="justify-content:center">
+                    <button class="btn secondary" id="ci-goto-attendance">📅 View Attendance ›</button>
+                  </div>
+                  <button class="switch-link" id="ci-switch">Not you? Switch National ID</button>
+                </div>
+              </div>
+              <div class="custom-scrollbar" id="custom-scrollbar-0"><div class="custom-scrollbar-thumb"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLIDE 2: ATTENDANCE -->
+        <div class="carousel-slide" data-slide="1">
+          <div class="panel">
+            <div class="card-peek">
+              <div class="peek-icon">📅</div>
+              <div class="peek-title">Attendance</div>
+              <div class="peek-hint">Tap to open</div>
+            </div>
+            <div class="card-full">
+              <button class="card-close" data-idx="1">✕</button>
+              <div class="card-scroll" id="card-scroll-1">
+                <h2>Monthly Attendance</h2>
+                <div id="att-locked" class="locked-hint">Check in on the first card to unlock your attendance calendar.</div>
+                <div id="att-body" style="display:none">
+                  <div id="att-cal-holder">
+                    <div class="cal-nav">
+                      <button id="att-prev">‹</button>
+                      <div class="cal-title" id="att-title">—</div>
+                      <button id="att-next">›</button>
+                    </div>
+                    <div class="cal-grid" id="att-grid"></div>
+                    <div class="legend">
+                      <span><span class="dotleg" style="background:var(--ok)"></span> Present</span>
+                      <span><span class="dotleg" style="background:var(--danger)"></span> Absent</span>
+                      <span><span class="dotleg" style="background:var(--amber)"></span> Today</span>
+                      <span><span class="dotleg" style="background:var(--line)"></span> Out of range</span>
+                    </div>
+                  </div>
+                </div>
+                <div id="att-msg"></div>
+              </div>
+              <div class="custom-scrollbar" id="custom-scrollbar-1"><div class="custom-scrollbar-thumb"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLIDE 3: MY STAGE -->
+        <div class="carousel-slide" data-slide="2">
+          <div class="panel">
+            <div class="card-peek">
+              <div class="peek-icon">🧭</div>
+              <div class="peek-title">My Stage</div>
+              <div class="peek-hint">Tap to open</div>
+            </div>
+            <div class="card-full">
+              <button class="card-close" data-idx="2">✕</button>
+              <div class="card-scroll" id="card-scroll-2">
+                <h2>Where Did You Reach?</h2>
+                <div id="st-locked" class="locked-hint">Check in on the first card to unlock your stage tracker.</div>
+                <div id="st-body" style="display:none">
+                  <div id="st-holder"></div>
+                </div>
+                <div id="st-msg"></div>
+              </div>
+              <div class="custom-scrollbar" id="custom-scrollbar-2"><div class="custom-scrollbar-thumb"></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="carousel-nav">
+        <button id="car-prev">‹</button>
+        <div class="carousel-dots">
+          <span class="dot active" data-idx="0"></span>
+          <span class="dot" data-idx="1"></span>
+          <span class="dot" data-idx="2"></span>
+        </div>
+        <button id="car-next">›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== DASHBOARD (admin-only) ===================== -->
+  <div id="tab-dashboard" style="display:none">
+    <div class="panel">
+      <h2>Filters</h2>
+      <div class="dash-filters">
+        <select id="dash-f-date"><option value="">All dates</option></select>
+        <select id="dash-f-shift"><option value="">All shifts</option></select>
+        <select id="dash-f-modality"><option value="">All modalities</option></select>
+        <select id="dash-f-queue"><option value="">All queues</option></select>
+        <select id="dash-f-pass"><option value="">All pass values</option></select>
+        <select id="dash-f-room"><option value="">All rooms</option></select>
+        <select id="dash-f-yubikey"><option value="">All yubikeys</option></select>
+        <button class="btn" id="dash-apply-btn">Apply</button>
+        <button class="btn secondary" id="dash-reset-btn">Reset</button>
+      </div>
+      <div id="dash-msg"></div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">PC Cards <span class="count-note" id="dash-cards-count"></span></div>
+      <div class="dash-cards" id="dash-cards"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">
+        Row Detail <span class="count-note" id="dash-rows-count"></span>
+      </div>
+      <div class="grid" style="margin-bottom:10px">
+        <div><input id="dash-search" placeholder="🔍 Search name, email, PC, queue, ID..."></div>
+      </div>
+      <div class="dash-table-wrap">
+        <table>
+          <thead><tr>
+            <th>Timestamp</th><th>Shift</th><th>Unit</th><th>QTC Name</th><th>Yubikey Email</th>
+            <th>Labeler Name</th><th>PC No</th><th>Modality</th><th>Queue Name</th><th>ID</th>
+            <th>Object Count</th><th>Pass</th><th>Stage</th><th>Created At</th>
+          </tr></thead>
+          <tbody id="dash-rows-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">Queue — Total Submits</div>
+      <div id="dash-queue-table"></div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">Modality &amp; Pass</div>
+      <div id="dash-modality"></div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">Object Count</div>
+      <div class="dash-objcount">
+        <div><div class="lab">Total Objects</div><div class="big" id="dash-obj-total">—</div></div>
+        <div><div class="lab">Avg / Task</div><div class="big" id="dash-obj-avg">—</div></div>
+      </div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">Top QTC — Most Submits</div>
+      <div class="dash-chips" id="dash-top-qtc"></div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">Top Labeler — Most Submits</div>
+      <div class="dash-chips" id="dash-top-labeler"></div>
+    </div>
+  </div>
+
+  <!-- ===================== QUALITY (admin-only) ===================== -->
+  <div id="tab-quality" style="display:none">
+    <div class="panel">
+      <h2>Filter</h2>
+      <div class="dash-filters">
+        <select id="qual-f-email"><option value="">All emails</option></select>
+        <button class="btn" id="qual-apply-btn">Apply</button>
+        <button class="btn secondary" id="qual-reset-btn">Reset</button>
+      </div>
+      <div id="qual-msg"></div>
+    </div>
+
+    <div class="qual-stat-card">
+      <div class="qs-icon">📊</div>
+      <div class="qs-num" id="qual-count">—</div>
+      <div class="qs-label">Tasks</div>
+    </div>
+
+    <div class="qual-history-title">
+      📋 Task History
+      <div class="bar"></div>
+    </div>
+    <div class="qual-cards" id="qual-cards"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- ===================== TEAMS (admin-only) ===================== -->
+  <!-- ===================== ATTENDANCE (admin-only, lives inside the dashboard) ===================== -->
+  <div id="tab-attendance" style="display:none">
+    <div class="panel">
+      <h2>Attendance</h2>
+      <div class="dash-filters">
+        <select id="att-f-sheet"><option value="">All shifts</option></select>
+        <button class="btn secondary" id="att-reload-btn">Reload</button>
+      </div>
+      <p style="font-size:12.5px;color:var(--muted);margin:0">
+        Day 1 = the join date. <b>T1 / T2 / T3 / TP</b> = days they came, <b>0</b> = missed.
+        Two 0 in a row before T3 = red row + Dropped out. Tap any cell to set it by hand.
+      </p>
+      <div id="att-admin-msg"></div>
+    </div>
+    <div id="att-admin-holder"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div id="tab-teams" style="display:none">
+    <div id="teams-holder"><div class="empty">Loading…</div></div>
+    <div id="teams-msg"></div>
+  </div>
+
+  <!-- ===================== ADMIN ===================== -->
+  <div id="tab-admin" style="display:none">
+    <div class="panel">
+      <h2>Register New Trainee</h2>
+      <div class="grid">
+        <div><label>National ID</label><input id="a-nid" placeholder="14 digits"></div>
+        <div><label>Name (optional, taken from the batch)</label><input id="a-name" placeholder="Full name"></div>
+        <div><label>PC</label><input id="a-pc" placeholder="e.g. PC-14"></div>
+        <div><label>Yubikey</label><input id="a-flash" placeholder="ME000000"></div>
+        <div><label>Room</label>
+          <select id="a-room"><option value="106">106</option><option value="102">102</option><option value="108">108</option><option value="sf">SF</option></select>
+        </div>
+        <div><label>Shift</label>
+          <select id="a-shift"><option value="M">M</option><option value="N">N</option><option value="ON">ON</option></select>
+        </div>
+      </div>
+      <div class="actions-row"><button class="btn" id="a-add-btn">Register</button></div>
+      <div id="a-msg"></div>
+    </div>
+    <div class="panel">
+      <h2>Attendance &amp; shift tabs</h2>
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">
+        Attendance is computed inside the dashboard (see the Attendance tab), there is no Attend sheet.
+        <b>Check dropouts</b> re-checks everybody and writes "Dropped out" where two 0 in a row came before T3.
+        <b>Arrange shift tabs</b> sorts each tab by Join Date and puts a black row between the dates.
+      </p>
+      <div class="actions-row"><button class="btn secondary" id="a-sync-btn">Check dropouts now</button></div>
+      <div id="a-sync-msg"></div>
+      <div class="actions-row" style="margin-top:8px">
+        <button class="btn secondary" id="a-trigger-btn">⏰ Check dropouts every night</button>
+      </div>
+      <div id="a-trigger-msg"></div>
+      <div class="actions-row" style="margin-top:8px">
+        <button class="btn secondary" id="a-arrange-btn">🗂 Arrange shift tabs by date</button>
+      </div>
+      <div id="a-arrange-msg"></div>
+    </div>
+    <div class="panel">
+      <h2>All Trainees</h2>
+      <div id="a-table-holder"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== ATTENDANCE CELL MODAL ===================== -->
+<div id="att-modal">
+  <div class="tm-box">
+    <button class="tm-close" id="am-close">✕</button>
+    <div class="tm-pc" id="am-name">—</div>
+    <div class="tm-status" id="am-day" style="color:var(--muted)">—</div>
+    <div class="fb-row" id="am-options">
+      <button type="button" class="fb-btn" data-v="">Auto</button>
+      <button type="button" class="fb-btn" data-v="present">Present</button>
+      <button type="button" class="fb-btn" data-v="0">Absent (0)</button>
+      <button type="button" class="fb-btn" data-v="P">P</button>
+      <button type="button" class="fb-btn" data-v="O">O</button>
+      <button type="button" class="fb-btn" data-v="E">E</button>
+      <button type="button" class="fb-btn" data-v="T">T</button>
+    </div>
+    <div id="am-msg"></div>
+  </div>
+</div>
+
+<!-- ===================== TEAM MODAL (PC details + comment) ===================== -->
+<div id="team-modal">
+  <div class="tm-box">
+    <button class="tm-close" id="tm-close">✕</button>
+    <div style="font-size:30px">🖥️</div>
+    <div class="tm-pc" id="tm-pc">—</div>
+    <div class="tm-status" id="tm-status">—</div>
+    <div class="tm-chip"><div class="lab">Yubikey</div><div class="val" id="tm-flash">—</div></div>
+    <div class="tm-chip"><div class="lab">Name</div><div class="val" id="tm-name">—</div></div>
+    <label>Day</label>
+    <div class="day-tabs" id="tm-days"></div>
+    <label id="tm-comment-label">Comment — Day 1</label>
+    <textarea id="tm-comment" placeholder="اكتب تعليقك هنا..."></textarea>
+    <label id="tm-rating-label">Rating — Day 1</label>
+    <div class="stars" id="tm-stars">
+      <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+    </div>
+    <label>Feedback</label>
+    <div class="fb-row" id="tm-feedback">
+      <button type="button" class="fb-btn" data-fb="Pass">Pass</button>
+      <button type="button" class="fb-btn" data-fb="P">P</button>
+      <button type="button" class="fb-btn" data-fb="Failed">Failed</button>
+      <button type="button" class="fb-btn" data-fb="Dropped out">Dropped out</button>
+    </div>
+    <div id="tm-trainers"></div>
+    <label>Attendance</label>
+    <div class="att-summary" id="tm-att-summary">—</div>
+    <div class="att-chips" id="tm-att-chips"></div>
+    <label>Stage</label>
+    <div class="stage-box">
+      <div class="st-name" id="tm-stage-name">—</div>
+      <div class="st-sub" id="tm-stage-sub"></div>
+      <div class="stage-bar"><div id="tm-stage-bar" style="width:0%"></div></div>
+    </div>
+    <div class="actions-row" style="justify-content:center"><button class="btn" id="tm-save">Save</button></div>
+    <div id="tm-msg"></div>
+  </div>
+</div>
+
+<script>
+const STAGES = [
+  // ---- Phase 1 ----
+  {id:'p1_video', label:'Video Phase One', phase:'phase1'},
+  {id:'p1_vehicle', label:'Vehicle', phase:'phase1', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/vehicles?pli=1&authuser=0'},
+  {id:'p1_motorcycle', label:'Motorcycle', phase:'phase1', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/personal-vehicle/motorcycle'},
+  {id:'p1_task9106', label:'Task Day 1 (9106)', phase:'phase1'},
+  {id:'p1_task9661', label:'Task Day 1 (9661)', phase:'phase1'},
+  {id:'p1_task3200', label:'Task Day 1 (3200)', phase:'phase1'},
+  // ---- Phase 2 ----
+  {id:'p2_video', label:'Video Phase Two', phase:'phase2'},
+  {id:'p2_signs', label:'Signs', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/inanimate-objects/signs'},
+  {id:'p2_dynamicobstacle', label:'Dynamic Obstacle', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/inanimate-objects/dynamic-obstacle'},
+  {id:'p2_debris', label:'Debris', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/inanimate-objects/debris'},
+  {id:'p2_cone', label:'Construction Cone', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/inanimate-objects/construction-cone'},
+  {id:'p2_barrier', label:'Barrier', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/inanimate-objects/barrier'},
+  {id:'p2_vegetation', label:'Vegetation', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/shapeless-objects/vegetation'},
+  {id:'p2_vapor', label:'Vapor', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/shapeless-objects/vapor'},
+  {id:'p2_task5747', label:'Task Day 2 (5747)', phase:'phase2'},
+  {id:'p2_task6464', label:'Task Day 2 (6464)', phase:'phase2'},
+  {id:'p2_task6470', label:'Task Day 2 (6470)', phase:'phase2'},
+  // ---- Phase 3 ----
+  {id:'p3_video', label:'Video Phase Three', phase:'phase3'},
+  {id:'p3_qaerrors', label:'Auto QA Errors', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/welcome-to-meti/practicing/auto-qa-errors'},
+  {id:'p3_mapless', label:'Mapless', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/current-queue/sc3-full-scene-lidar'},
+  {id:'p3_signals', label:'Signals', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/sc3-full-scene-new-version/vehicle-signals-labeling'},
+  {id:'p3_roadsign', label:'Road Sign', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/sc3-full-scene-new-version/road-sign-labeling'},
+  {id:'p3_nlz', label:'NLZ Labeling', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/sc3-full-scene-2-1-versioning/nlz-labeling'},
+  {id:'p3_task7362', label:'Task Day 3 (7362)', phase:'phase3'},
+];
+const PHASE_LABELS = {phase1:'Phase 1', phase2:'Phase 2', phase3:'Phase 3'};
+const ROOMS = {'106':'106','102':'102','108':'108','sf':'SF'};
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function safeStr(v){ return (v===null||v===undefined) ? '' : String(v); }
+function stageIndex(id){ return STAGES.findIndex(s=>s.id===id); }
+function stageLabel(id){ const s=STAGES.find(x=>x.id===id); return s ? s.label : '—'; }
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent=safeStr(str); return d.innerHTML; }
+
+// Secret admin token: issued by the server ONLY when "meti22" is typed in
+// Check In, stored on this device only, and sent with every admin call.
+const ADMIN_TOKEN_KEY = 'tracker_admin_token';
+let adminToken = '';
+try{ adminToken = localStorage.getItem(ADMIN_TOKEN_KEY) || ''; }catch(e){}
+function saveAdminToken(t){
+  adminToken = t || '';
+  try{ if(t) localStorage.setItem(ADMIN_TOKEN_KEY, t); else localStorage.removeItem(ADMIN_TOKEN_KEY); }catch(e){}
+}
+const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
+  'adminAddPerson','adminGetAllPeople','adminDeletePerson','adminGetTeams','adminSaveComment',
+  'getDashboardData','getQualityData','adminSetupDailyTrigger','adminArrangeShiftSheets',
+  'adminGetAttendance','adminSetAttendance'];
+
+// ===== Hosting =====
+// Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
+// Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
+const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
+
+function runScript(fnName, ...args){
+  if(ADMIN_FNS.indexOf(fnName) !== -1) args.push(adminToken); // token is always the LAST argument
+  if(HAS_GAS){
+    return new Promise((resolve, reject)=>{
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fnName](...args);
+    });
+  }
+  // Hosted outside Google: call the Apps Script Web App as a JSON API.
+  if(!/^https:\/\/script\.google\.com\//.test(API_URL)){
+    return Promise.reject(new Error('API_URL is not set in Index.html. Paste your Apps Script Web App URL (ends with /exec).'));
+  }
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // plain text = no CORS preflight
+    body: JSON.stringify({ fn: fnName, args: args })
+  }).then(r => r.json()).then(j => {
+    if(j && j.ok) return j.result;
+    throw new Error((j && j.error) || 'Request failed.');
+  });
+}
+function errText(e){ return (e && e.message) ? e.message : String(e); }
+
+// ---------------- Custom scrollbar engine (JS-driven, works on every device) ----------------
+function updateCustomScrollbar(idx){
+  const scrollEl = document.getElementById('card-scroll-'+idx);
+  const track = document.getElementById('custom-scrollbar-'+idx);
+  if(!scrollEl || !track) return;
+  const thumb = track.querySelector('.custom-scrollbar-thumb');
+  const trackHeight = track.clientHeight;
+  const contentHeight = scrollEl.scrollHeight;
+  const visibleHeight = scrollEl.clientHeight;
+
+  if(trackHeight <= 0 || contentHeight <= visibleHeight + 2){
+    track.classList.remove('visible');
+    return;
+  }
+  track.classList.add('visible');
+  const thumbHeight = Math.max(30, (visibleHeight / contentHeight) * trackHeight);
+  const maxThumbTop = trackHeight - thumbHeight;
+  const maxScroll = contentHeight - visibleHeight;
+  const scrollRatio = maxScroll > 0 ? (scrollEl.scrollTop / maxScroll) : 0;
+  thumb.style.height = thumbHeight + 'px';
+  thumb.style.top = (maxThumbTop * scrollRatio) + 'px';
+}
+function updateAllCustomScrollbars(){ [0,1,2].forEach(updateCustomScrollbar); }
+
+[0,1,2].forEach(idx=>{
+  const scrollEl = document.getElementById('card-scroll-'+idx);
+  if(scrollEl) scrollEl.addEventListener('scroll', ()=> updateCustomScrollbar(idx));
+});
+window.addEventListener('resize', updateAllCustomScrollbars);
+
+// ---------------- Splash Screen ----------------
+(function initSplash(){
+  const splash = document.getElementById('splash');
+  if(!splash) return;
+  let dismissed = false;
+  const dismiss = ()=>{
+    if(dismissed) return;
+    dismissed = true;
+    splash.classList.add('hide');
+    document.body.classList.remove('has-splash');
+  };
+  setTimeout(dismiss, 3200); // auto-hide once the animation finishes
+  splash.addEventListener('click', dismiss); // tap anywhere to skip early
+})();
+
+// ---------------- Gradient Border Effect (one listener powers every card) ----------------
+// A single pointermove listener on the whole page updates --x / --y on
+// whichever .panel the pointer is currently over, so the glowing border
+// tracks the cursor. No listener is attached per-card.
+document.addEventListener('pointermove', (e)=>{
+  const panels = document.querySelectorAll('.panel');
+  panels.forEach(panel=>{
+    const rect = panel.getBoundingClientRect();
+    const inside = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    if(inside){
+      panel.style.setProperty('--x', (e.clientX - rect.left) + 'px');
+      panel.style.setProperty('--y', (e.clientY - rect.top) + 'px');
+      panel.classList.add('glow-active');
+    } else {
+      panel.classList.remove('glow-active');
+    }
+  });
+});
+
+// ---------------- Theme ----------------
+async function loadTheme(){
+  let mode = '';
+  try{ mode = localStorage.getItem('tracker_theme') || ''; }catch(e){}
+  if(!mode && HAS_GAS){ try{ mode = await runScript('getTheme'); }catch(e){} }
+  if(mode === 'light') setTheme('light');
+}
+function setTheme(mode){
+  const isLight = mode==='light';
+  document.documentElement.classList.toggle('light', isLight);
+  document.getElementById('mode-icon').textContent = isLight ? '🌙' : '☀️';
+  document.getElementById('mode-label').textContent = isLight ? 'Dark' : 'Light';
+}
+document.getElementById('mode-toggle').addEventListener('click', async ()=>{
+  const isLight = document.documentElement.classList.contains('light');
+  const newMode = isLight ? 'dark' : 'light';
+  setTheme(newMode);
+  try{ localStorage.setItem('tracker_theme', newMode); }catch(e){}
+  if(HAS_GAS){ try{ await runScript('setTheme', newMode); }catch(e){} }
+});
+
+// ---------------- Admin unlock ----------------
+let userIsAdmin = false;
+let adminInfo = null;   // { user, all, shifts } — what this login may see (SV = all)
+async function loadAdminStatus(){
+  userIsAdmin = false;
+  adminInfo = null;
+  if(adminToken){
+    try{ const who = await runScript('isAdminUnlocked'); userIsAdmin = !!who; adminInfo = who || null; }catch(e){ userIsAdmin = false; }
+    if(!userIsAdmin) saveAdminToken(''); // token no longer valid on the server
+  }
+  applyAdminUi();
+}
+function applyAdminUi(){
+  renderProfile();
+  // the Admin tab (sign-ups, nightly check, arrange tabs) is for SV only; shift users get the other tabs
+  const isSV = !!(userIsAdmin && adminInfo && adminInfo.all);
+  document.getElementById('admin-tab-btn').style.display = isSV ? 'inline-block' : 'none';
+  document.getElementById('dashboard-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
+  document.getElementById('quality-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
+  document.getElementById('teams-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
+  document.getElementById('attendance-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
+  document.getElementById('logout-btn').style.display = userIsAdmin ? 'inline-flex' : 'none';
+  const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset;
+  if(!userIsAdmin && activeTab && activeTab.tab !== 'carousel'){
+    switchTab('carousel');
+  } else if(userIsAdmin && !isSV && activeTab && activeTab.tab === 'admin'){
+    switchTab('teams');
+  }
+}
+async function doLogout(){
+  if(!userIsAdmin) return;
+  try{ await runScript('lockAdmin'); }catch(e){}
+  saveAdminToken('');
+  adminInfo = null;
+  userIsAdmin = false; applyAdminUi();
+}
+document.getElementById('logout-btn').addEventListener('click', doLogout);
+
+// The photo + name card shown after login (photo link and title come from the "users" sheet)
+function renderProfile(){
+  const card = document.getElementById('pf-chip');
+  if(!userIsAdmin || !adminInfo){ card.style.display = 'none'; return; }
+  card.style.display = 'flex';
+  document.getElementById('pf-name').textContent = adminInfo.user || '';
+  const t = document.getElementById('pf-title');
+  t.textContent = adminInfo.title || '';
+  t.style.display = adminInfo.title ? 'block' : 'none';
+  const img = document.getElementById('pf-img'), ini = document.getElementById('pf-initials');
+  ini.textContent = (adminInfo.user || '?').trim().charAt(0).toUpperCase();
+  if(adminInfo.photo){
+    ini.style.display = 'none'; img.style.display = 'block';
+    img.onerror = () => { img.style.display = 'none'; ini.style.display = 'flex'; };
+    if(img.getAttribute('data-src') !== adminInfo.photo){ img.setAttribute('data-src', adminInfo.photo); img.src = adminInfo.photo; }
+  } else {
+    img.style.display = 'none'; ini.style.display = 'flex';
+  }
+}
+
+// ---------------- Tabs (Carousel vs Dashboard vs Quality vs Teams vs Admin) ----------------
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab')===tab));
+  ['carousel','dashboard','quality','teams','attendance','admin'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = (t===tab) ? 'block' : 'none';
+  });
+  if(tab==='admin') loadAdminTable();
+  if(tab==='dashboard') loadDashboard();
+  if(tab==='quality') loadQuality();
+  if(tab==='teams') loadTeams();
+  if(tab==='attendance') loadAdminAttendance();
+  autoLast[tab] = Date.now();
+}
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchTab(btn.getAttribute('data-tab')));
+});
+
+// ---------------- 3D Glass Carousel engine ----------------
+let carouselActive = 0;
+const CAROUSEL_SLIDE_COUNT = 3;
+
+function updateCarousel(){
+  document.querySelectorAll('.carousel-slide').forEach(slide=>{
+    const i = parseInt(slide.getAttribute('data-slide'), 10);
+    const offset = i - carouselActive;
+    slide.style.transform = `translateX(${offset*88}%) translateZ(${-Math.abs(offset)*260}px) rotateY(${offset*-30}deg)`;
+    slide.style.opacity = offset === 0 ? '1' : '0.35';
+    slide.style.filter = offset === 0 ? 'none' : 'blur(1.5px)';
+    slide.style.zIndex = slide.classList.contains('expanded') ? '40' : String(10 - Math.abs(offset));
+    slide.style.pointerEvents = offset === 0 ? 'auto' : 'none';
+  });
+  document.querySelectorAll('.carousel-dots .dot').forEach((d,i)=> d.classList.toggle('active', i===carouselActive));
+}
+
+// ---------------- Card expand / collapse (small badge -> full card) ----------------
+function collapseAllCards(){
+  document.querySelectorAll('.carousel-slide').forEach(s=>s.classList.remove('expanded'));
+  document.getElementById('carousel').classList.remove('has-expanded');
+}
+function expandCard(idx){
+  collapseAllCards();
+  const slide = document.querySelector('.carousel-slide[data-slide="'+idx+'"]');
+  if(slide){
+    slide.classList.add('expanded');
+    document.getElementById('carousel').classList.add('has-expanded');
+  }
+  updateCarousel();
+  updateCustomScrollbar(idx);
+  setTimeout(()=> updateCustomScrollbar(idx), 450); // re-measure once the expand transition finishes
+}
+document.querySelectorAll('.card-peek').forEach(peek=>{
+  peek.addEventListener('click', ()=>{
+    const idx = parseInt(peek.closest('.carousel-slide').getAttribute('data-slide'), 10);
+    goToSlide(idx);
+    expandCard(idx);
+  });
+});
+document.querySelectorAll('.card-close').forEach(btn=>{
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    collapseAllCards();
+    updateCarousel();
+  });
+});
+
+function goToSlide(i){
+  carouselActive = Math.max(0, Math.min(CAROUSEL_SLIDE_COUNT-1, i));
+  collapseAllCards();
+  updateCarousel();
+}
+document.getElementById('car-prev').addEventListener('click', ()=> goToSlide(carouselActive - 1));
+document.getElementById('car-next').addEventListener('click', ()=> goToSlide(carouselActive + 1));
+document.querySelectorAll('.carousel-dots .dot').forEach(dot=>{
+  dot.addEventListener('click', ()=> goToSlide(parseInt(dot.getAttribute('data-idx'), 10)));
+});
+document.getElementById('ci-goto-attendance').addEventListener('click', ()=>{ goToSlide(1); expandCard(1); });
+
+// basic swipe support for mobile
+(function enableSwipe(){
+  const el = document.getElementById('carousel');
+  let startX = null;
+  el.addEventListener('touchstart', e=>{ startX = e.touches[0].clientX; }, {passive:true});
+  el.addEventListener('touchend', e=>{
+    if(startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    if(Math.abs(dx) > 50){ dx < 0 ? goToSlide(carouselActive+1) : goToSlide(carouselActive-1); }
+    startX = null;
+  }, {passive:true});
+})();
+
+updateCarousel();
+
+// ---------------- Shared National ID (typed once, used by all 3 cards) ----------------
+const LAST_NID_KEY = 'tracker_last_nid';
+let currentNationalId = null;
+
+document.getElementById('ci-start-btn').addEventListener('click', async ()=>{
+  const nid = document.getElementById('ci-nid').value.trim();
+  const msgEl = document.getElementById('ci-msg');
+  if(!nid){ msgEl.innerHTML = '<div class="msg err">Please enter your National ID first.</div>'; return; }
+
+  const btn = document.getElementById('ci-start-btn');
+  btn.disabled = true; btn.textContent = '...';
+  msgEl.innerHTML = '';
+
+  try{
+    const res = await runScript('checkIn', nid);
+    if(res.success && res.needPassword){
+      pendingAdminUser = nid;
+      document.getElementById('ci-pass-wrap').style.display = 'block';
+      document.getElementById('ci-pass').value = '';
+      document.getElementById('ci-pass').focus();
+      msgEl.innerHTML = '<div class="msg ok">Enter your password to continue.</div>';
+      updateCustomScrollbar(0);
+    } else if(!res.success){
+      msgEl.innerHTML = '<div class="msg err">' + escapeHtml(res.message) + '</div>';
+    } else {
+      hideAdminPassBox();
+      currentNationalId = nid;
+      try{ localStorage.setItem(LAST_NID_KEY, nid); }catch(e){}
+      showCheckinCard(res.person);
+      unlockOtherCards();
+      loadAttendance();   // preload silently so slide 2 is ready instantly
+      loadStagePage();    // preload silently so slide 3 is ready instantly
+    }
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Sign in';
+});
+
+// ---- Admin login (user name typed in the ID box + password) ----
+let pendingAdminUser = null;
+function hideAdminPassBox(){
+  pendingAdminUser = null;
+  document.getElementById('ci-pass-wrap').style.display = 'none';
+  document.getElementById('ci-pass').value = '';
+  updateCustomScrollbar(0);
+}
+document.getElementById('ci-pass-cancel').addEventListener('click', ()=>{
+  hideAdminPassBox();
+  document.getElementById('ci-msg').innerHTML = '';
+});
+document.getElementById('ci-pass').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('ci-login-btn').click();
+});
+document.getElementById('ci-login-btn').addEventListener('click', async ()=>{
+  if(!pendingAdminUser) return;
+  const msgEl = document.getElementById('ci-msg');
+  const pass = document.getElementById('ci-pass').value;
+  if(!pass){ msgEl.innerHTML = '<div class="msg err">Please enter your password.</div>'; return; }
+  const btn = document.getElementById('ci-login-btn');
+  btn.disabled = true; btn.textContent = '...';
+  try{
+    const res = await runScript('adminLogin', pendingAdminUser, pass);
+    if(res && res.success){
+      saveAdminToken(res.token);
+      userIsAdmin = true;
+      adminInfo = { user: res.user, all: !!res.all, shifts: res.shifts || [], photo: res.photo || '', title: res.title || '' };
+      applyAdminUi();
+      if(adminInfo.all) loadAdminTable();
+      document.getElementById('ci-nid').value = '';
+      hideAdminPassBox();
+      msgEl.innerHTML = '<div class="msg ok">Admin unlocked ✓</div>';
+    } else {
+      msgEl.innerHTML = '<div class="msg err">' + escapeHtml((res && res.message) || 'Login failed.') + '</div>';
+    }
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Login';
+});
+
+// ---- Register (new trainee sign-up -> "log" sheet) ----
+function showRegisterForm(show){
+  document.getElementById('register-form').style.display = show ? 'block' : 'none';
+  document.getElementById('checkin-form').style.display = show ? 'none' : 'block';
+  document.getElementById('ci-title').textContent = show ? 'Login' : 'Check In For Today';
+  document.getElementById('rg-msg').innerHTML = '';
+  updateCustomScrollbar(0);
+}
+document.getElementById('ci-register-link').addEventListener('click', ()=>{
+  hideAdminPassBox();
+  document.getElementById('ci-msg').innerHTML = '';
+  showRegisterForm(true);
+});
+document.getElementById('rg-back').addEventListener('click', ()=> showRegisterForm(false));
+
+document.getElementById('rg-submit').addEventListener('click', async ()=>{
+  const data = {
+    nationalId: document.getElementById('rg-nid').value.replace(/\s/g,''),
+    name: document.getElementById('rg-name').value.trim(),
+    phone: document.getElementById('rg-phone').value.trim(),
+    gmail: document.getElementById('rg-gmail').value.trim(),
+    shift: document.getElementById('rg-shift').value,
+    location: document.getElementById('rg-location').value
+  };
+  const msgEl = document.getElementById('rg-msg');
+  if(!/^\d{14}$/.test(data.nationalId)){ msgEl.innerHTML = '<div class="msg err">National ID must be 14 digits.</div>'; return; }
+  if(data.name.length < 3){ msgEl.innerHTML = '<div class="msg err">Please enter your full name.</div>'; return; }
+  if(!/^\+?\d{10,15}$/.test(data.phone.replace(/[\s-]/g,''))){ msgEl.innerHTML = '<div class="msg err">Please enter a valid phone number.</div>'; return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.gmail)){ msgEl.innerHTML = '<div class="msg err">Please enter a valid Gmail address.</div>'; return; }
+  if(!data.shift){ msgEl.innerHTML = '<div class="msg err">Please choose a shift.</div>'; return; }
+  if(!data.location){ msgEl.innerHTML = '<div class="msg err">Please choose a location.</div>'; return; }
+
+  const btn = document.getElementById('rg-submit');
+  btn.disabled = true; btn.textContent = '...';
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('registerTrainee', data);
+    if(res && res.success){
+      ['rg-nid','rg-name','rg-phone','rg-gmail','rg-shift','rg-location'].forEach(id=>{ document.getElementById(id).value=''; });
+      document.getElementById('ci-nid').value = data.nationalId; // ready for Check In once activated
+      showRegisterForm(false);
+      document.getElementById('ci-msg').innerHTML = '<div class="msg ok">Registered ✓ You are in your shift now. Press Sign in to check in.</div>';
+    } else {
+      msgEl.innerHTML = '<div class="msg err">' + escapeHtml((res && res.message) || 'Registration failed.') + '</div>';
+    }
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Register';
+});
+
+function showCheckinCard(person){
+  document.getElementById('checkin-form').style.display = 'none';
+  document.getElementById('checkin-card').style.display = 'block';
+  document.getElementById('ci-name').textContent = person.name || '—';
+  document.getElementById('ci-pc').textContent = person.pc || '—';
+  document.getElementById('ci-flash').textContent = person.flash || '—';
+  document.getElementById('ci-room').textContent = ROOMS[person.room] || person.room || '—';
+  document.getElementById('ci-day').textContent = person.dayNumber ? ('Day ' + person.dayNumber) : '—';
+  updateCustomScrollbar(0);
+}
+
+function unlockOtherCards(){
+  document.getElementById('att-locked').style.display = 'none';
+  document.getElementById('att-body').style.display = 'block';
+  document.getElementById('st-locked').style.display = 'none';
+  document.getElementById('st-body').style.display = 'block';
+}
+function relockOtherCards(){
+  document.getElementById('att-locked').style.display = 'block';
+  document.getElementById('att-body').style.display = 'none';
+  document.getElementById('st-locked').style.display = 'block';
+  document.getElementById('st-body').style.display = 'none';
+  document.getElementById('att-grid').innerHTML = '';
+  document.getElementById('st-holder').innerHTML = '';
+}
+
+document.getElementById('ci-switch').addEventListener('click', ()=>{
+  currentNationalId = null;
+  document.getElementById('checkin-form').style.display = 'block';
+  document.getElementById('checkin-card').style.display = 'none';
+  document.getElementById('ci-nid').value = '';
+  document.getElementById('ci-msg').innerHTML = '';
+  relockOtherCards();
+  goToSlide(0);
+});
+
+// prefill last used National ID for convenience (still requires tapping Sign in)
+(function prefill(){
+  try{
+    const last = localStorage.getItem(LAST_NID_KEY);
+    if(last) document.getElementById('ci-nid').value = last;
+  }catch(e){}
+})();
+
+// ---------------- SLIDE 2: Attendance calendar (uses currentNationalId) ----------------
+let attCurrentYear = new Date().getFullYear();
+let attCurrentMonth = new Date().getMonth() + 1; // 1-12
+
+async function loadAttendance(){
+  if(!currentNationalId) return;
+  const msgEl = document.getElementById('att-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('getAttendanceMonth', currentNationalId, attCurrentYear, attCurrentMonth);
+    if(!res.success){
+      msgEl.innerHTML = '<div class="msg err">' + escapeHtml(res.message) + '</div>';
+      return;
+    }
+    renderCalendar(res);
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+document.getElementById('att-prev').addEventListener('click', ()=>{
+  attCurrentMonth--; if(attCurrentMonth < 1){ attCurrentMonth = 12; attCurrentYear--; }
+  loadAttendance();
+});
+document.getElementById('att-next').addEventListener('click', ()=>{
+  attCurrentMonth++; if(attCurrentMonth > 12){ attCurrentMonth = 1; attCurrentYear++; }
+  loadAttendance();
+});
+
+function renderCalendar(res){
+  document.getElementById('att-title').textContent = MONTH_NAMES[attCurrentMonth-1] + ' ' + attCurrentYear + ' — ' + (res.person.name || '');
+  const grid = document.getElementById('att-grid');
+  grid.innerHTML = res.days.map(d=>{
+    return `<div class="cal-day ${d.status}">${d.day}</div>`;
+  }).join('');
+  updateCustomScrollbar(1);
+}
+
+// ---------------- SLIDE 3: Stage picker (uses currentNationalId) ----------------
+let stCurrentPerson = null;
+let stDynamic = null;   // stage list read from the sheet (checkbox columns), null = built-in list
+
+function phaseClass(ph){
+  const m = /(\d+)/.exec(ph || '');
+  return m ? 'phase' + Math.min(parseInt(m[1], 10), 3) : 'phase1';
+}
+
+function renderDynamicStages(){
+  const list = stDynamic || [];
+  const order = [], groups = {};
+  list.forEach(s => { if(!groups[s.phase]){ groups[s.phase] = []; order.push(s.phase); } groups[s.phase].push(s); });
+  const cur = list.find(s => s.current);
+  const blocks = order.map(ph => {
+    const opts = groups[ph].map(s => {
+      let cls = 'stage-opt';
+      if(s.done) cls += ' done'; else if(s.current) cls += ' current';
+      const icon = s.done ? ' ✓' : (s.link ? ' 🔗' : '');
+      return '<div class="' + cls + '" data-id="' + escapeHtml(s.id) + '">' + escapeHtml(s.label) + icon + '</div>';
+    }).join('');
+    return '<div class="phase-block"><div class="phase-title ' + phaseClass(ph) + '">' + escapeHtml(ph) + '</div><div class="stage-picker">' + opts + '</div></div>';
+  }).join('');
+
+  const holder = document.getElementById('st-holder');
+  holder.innerHTML =
+    '<div style="margin-top:10px;font-size:13px;color:var(--muted)">Current stage: <strong style="color:var(--amber)">' +
+    (cur ? escapeHtml(cur.label) : 'All stages done ✓') + '</strong></div>' +
+    (cur ? '<div class="actions-row"><button class="btn secondary" id="st-finish-btn">✓ I finished this stage</button></div>' : '') +
+    blocks;
+  updateCustomScrollbar(2);
+
+  const apply = async (id, finish) => {
+    try{
+      const res = await runScript('setMyStage', currentNationalId, id, finish);
+      if(res && res.success){ stDynamic = res.stages; renderDynamicStages(); }
+      else alert((res && res.message) || 'Something went wrong.');
+    }catch(e){ alert('Error: ' + errText(e)); }
+  };
+  holder.querySelectorAll('.stage-opt').forEach(opt => {
+    opt.addEventListener('click', async () => {
+      const id = opt.getAttribute('data-id');
+      const s = (stDynamic || []).find(x => x.id === id);
+      // tapping a stage ticks every box before it in the sheet
+      if(s && !s.done && !s.current) await apply(id, false);
+      if(s && s.link) window.open(s.link, '_blank');
+    });
+  });
+  const fin = document.getElementById('st-finish-btn');
+  if(fin && cur) fin.addEventListener('click', () => apply(cur.id, true));
+}
+
+async function loadStagePage(){
+  if(!currentNationalId) return;
+  const msgEl = document.getElementById('st-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('lookupPerson', currentNationalId);
+    if(!res.success){
+      msgEl.innerHTML = '<div class="msg err">' + escapeHtml(res.message) + '</div>';
+      return;
+    }
+    stCurrentPerson = res.person;
+    // The stages come from the checkbox columns of the trainee's shift tab; if none are
+    // found, the page falls back to its own built-in list.
+    let dyn = null;
+    try{ dyn = await runScript('getMyStages', currentNationalId); }catch(e){}
+    if(dyn && dyn.success && dyn.source === 'sheet' && dyn.stages && dyn.stages.length){
+      stDynamic = dyn.stages;
+      renderDynamicStages();
+    } else {
+      stDynamic = null;
+      renderStagePicker();
+    }
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+
+function renderStagePicker(){
+  const currentIdx = stageIndex(stCurrentPerson.stage);
+  const blocks = Object.keys(PHASE_LABELS).map(phaseKey=>{
+    const opts = STAGES.filter(s=>s.phase===phaseKey).map(s=>{
+      const idx = stageIndex(s.id);
+      let cls = 'stage-opt';
+      if(idx < currentIdx) cls += ' done';
+      else if(idx === currentIdx) cls += ' current';
+      const icon = idx < currentIdx ? ' ✓' : (s.link ? ' 🔗' : '');
+      return `<div class="${cls}" data-stage="${s.id}" data-idx="${idx}">${s.label}${icon}</div>`;
+    }).join('');
+    return `<div class="phase-block">
+      <div class="phase-title ${phaseKey}">${PHASE_LABELS[phaseKey]}</div>
+      <div class="stage-picker">${opts}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('st-holder').innerHTML = `
+    <div style="margin-top:10px;font-size:13px;color:var(--muted)">
+      Current stage: <strong style="color:var(--amber)">${stageLabel(stCurrentPerson.stage)}</strong>
+    </div>
+    ${blocks}
+  `;
+  updateCustomScrollbar(2);
+
+  document.getElementById('st-holder').querySelectorAll('.stage-opt').forEach(opt=>{
+    opt.addEventListener('click', async ()=>{
+      const stageId = opt.getAttribute('data-stage');
+      const stageObj = STAGES.find(s=>s.id===stageId);
+      const idx = parseInt(opt.getAttribute('data-idx'), 10);
+      const currentIdx = stageIndex(stCurrentPerson.stage);
+
+      // Jumping to any stage (forward OR backward) is allowed — tap a
+      // completed one to go back to it, or a future one to advance.
+      if(idx !== currentIdx){
+        try{
+          const res = await runScript('advanceStage', stCurrentPerson.nationalId, stageId);
+          if(res.success){
+            stCurrentPerson.stage = stageId;
+            renderStagePicker();
+          } else {
+            alert(res.message || 'Something went wrong.');
+          }
+        }catch(e){ alert('Error: ' + errText(e)); }
+      }
+      if(stageObj.link) window.open(stageObj.link, '_blank');
+    });
+  });
+}
+
+// ---------------- ADMIN ----------------
+document.getElementById('a-add-btn').addEventListener('click', async ()=>{
+  const nationalId = document.getElementById('a-nid').value.trim();
+  const name = document.getElementById('a-name').value.trim();
+  const pc = document.getElementById('a-pc').value.trim();
+  const flash = document.getElementById('a-flash').value.trim();
+  const room = document.getElementById('a-room').value;
+  const shift = document.getElementById('a-shift').value;
+  const msgEl = document.getElementById('a-msg');
+
+  if(!nationalId){ msgEl.innerHTML = '<div class="msg err">National ID is required.</div>'; return; }
+
+  const btn = document.getElementById('a-add-btn');
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  try{
+    await runScript('adminAddPerson', { nationalId, name, pc, flash, room, shift });
+    msgEl.innerHTML = '<div class="msg ok">Registered successfully ✓</div>';
+    ['a-nid','a-name','a-pc','a-flash'].forEach(id=>document.getElementById(id).value='');
+    loadAdminTable();
+    setTimeout(()=>{ msgEl.innerHTML=''; }, 2500);
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false;
+});
+
+document.getElementById('a-sync-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('a-sync-btn');
+  const msgEl = document.getElementById('a-sync-msg');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminSyncAllAttendance');
+    msgEl.innerHTML = '<div class="msg ok">Checked ' + res.count + ' trainee(s) ✓' + (res.dropped ? ' · ' + res.dropped + ' marked Dropped out' : '') + '</div>';
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Check dropouts now';
+});
+
+document.getElementById('a-arrange-btn').addEventListener('click', async ()=>{
+  if(!confirm('Sort every shift tab by Join Date and put a black row between the dates?\nTrainee rows are kept; the black rows made by the app are rebuilt. Best done when nobody is signing up.')) return;
+  const btn = document.getElementById('a-arrange-btn');
+  const msgEl = document.getElementById('a-arrange-msg');
+  btn.disabled = true; btn.textContent = 'Arranging…';
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminArrangeShiftSheets');
+    const warn = (res.warnings && res.warnings.length) ? '<br>' + res.warnings.map(escapeHtml).join('<br>') : '';
+    msgEl.innerHTML = '<div class="msg ok">Done ✓ ' + res.people + ' trainees, ' + res.blocks + ' date block(s)' + warn + '</div>';
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = '🗂 Arrange shift tabs by date';
+});
+
+document.getElementById('a-trigger-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('a-trigger-btn');
+  const msgEl = document.getElementById('a-trigger-msg');
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminSetupDailyTrigger');
+    msgEl.innerHTML = '<div class="msg ok">' + (res.already ? 'Nightly check is already on ✓' : 'Nightly check is on ✓ (every night around 00:30)') + '</div>';
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false;
+});
+
+async function loadAdminTable(){
+  const holder = document.getElementById('a-table-holder');
+  try{
+    const people = await runScript('adminGetAllPeople');
+    if(!people || people.length === 0){
+      holder.innerHTML = '<div class="empty">No one registered yet.</div>';
+      return;
+    }
+    const rows = people.map(p=>`
+      <tr>
+        <td>${escapeHtml(p.name)}</td>
+        <td class="mono">${escapeHtml(p.nationalId)}</td>
+        <td class="mono">${escapeHtml(p.pc)}</td>
+        <td class="mono">${escapeHtml(p.flash)}</td>
+        <td>${ROOMS[p.room] || escapeHtml(p.room)}</td>
+        <td>${escapeHtml(p.stageInfo ? p.stageInfo.label : stageLabel(p.stage))}</td>
+        <td>${p.dayNumber ? 'Day '+p.dayNumber : '—'}</td>
+        <td><span class="badge ${p.todayStatus}">${p.todayStatus==='present'?'Present':'Absent'}</span></td>
+        <td><button class="del-btn" data-nid="${escapeHtml(p.nationalId)}">✕</button></td>
+      </tr>`).join('');
+    holder.innerHTML = `<table>
+      <thead><tr><th>Name</th><th>National ID</th><th>PC</th><th>Yubikey</th><th>Room</th><th>Stage</th><th>Day</th><th>Today</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+    holder.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('Reset this trainee\'s tracker data (stage and check-ins)? Their row in the shift tab is not touched.')) return;
+        try{ await runScript('adminDeletePerson', btn.getAttribute('data-nid')); loadAdminTable(); }
+        catch(e){ alert('Error: ' + errText(e)); }
+      });
+    });
+  }catch(e){
+    holder.innerHTML = '<div class="empty">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+
+// ---------------- DASHBOARD (admin-only) ----------------
+let dashFilterOptionsLoaded = false;
+let dashCurrentRows = []; // rows currently rendered in the Row Detail table (for client-side search)
+
+function fillSelect_(selectEl, values, placeholderText){
+  const current = selectEl.value;
+  selectEl.innerHTML = '<option value="">'+escapeHtml(placeholderText)+'</option>' +
+    values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+  if(values.includes(current)) selectEl.value = current;
+}
+
+function getDashboardFilters_(){
+  return {
+    date: document.getElementById('dash-f-date').value,
+    shift: document.getElementById('dash-f-shift').value,
+    modality: document.getElementById('dash-f-modality').value,
+    queueName: document.getElementById('dash-f-queue').value,
+    pass: document.getElementById('dash-f-pass').value,
+    unit: document.getElementById('dash-f-room').value,
+    yubikeyEmail: document.getElementById('dash-f-yubikey').value
+  };
+}
+
+async function loadDashboard(){
+  const msgEl = document.getElementById('dash-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('getDashboardData', getDashboardFilters_());
+    if(!res.success){ msgEl.innerHTML = '<div class="msg err">Failed to load dashboard.</div>'; return; }
+
+    if(!dashFilterOptionsLoaded){
+      fillSelect_(document.getElementById('dash-f-date'), res.filterOptions.dates, 'All dates');
+      fillSelect_(document.getElementById('dash-f-shift'), res.filterOptions.shifts, 'All shifts');
+      fillSelect_(document.getElementById('dash-f-modality'), res.filterOptions.modalities, 'All modalities');
+      fillSelect_(document.getElementById('dash-f-queue'), res.filterOptions.queues, 'All queues');
+      fillSelect_(document.getElementById('dash-f-pass'), res.filterOptions.passValues, 'All pass values');
+      fillSelect_(document.getElementById('dash-f-room'), res.filterOptions.rooms, 'All rooms');
+      fillSelect_(document.getElementById('dash-f-yubikey'), res.filterOptions.yubikeys, 'All yubikeys');
+      dashFilterOptionsLoaded = true;
+    }
+
+    renderDashCards_(res.pcCards, res.totalRows);
+    dashCurrentRows = res.rows;
+    renderDashRows_(dashCurrentRows, res.totalRows, res.rowsCapped);
+    renderDashQueueTable_(res.queueTotals);
+    renderDashModality_(res.modalityPass);
+    document.getElementById('dash-obj-total').textContent = res.objectCount.total.toLocaleString();
+    document.getElementById('dash-obj-avg').textContent = res.objectCount.avgPerTask.toFixed(1);
+    renderDashChips_('dash-top-qtc', res.topQTC);
+    renderDashChips_('dash-top-labeler', res.topLabeler);
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+
+document.getElementById('dash-apply-btn').addEventListener('click', loadDashboard);
+document.getElementById('dash-reset-btn').addEventListener('click', ()=>{
+  ['dash-f-date','dash-f-shift','dash-f-modality','dash-f-queue','dash-f-pass','dash-f-room','dash-f-yubikey'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('dash-search').value = '';
+  loadDashboard();
+});
+document.getElementById('dash-search').addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  if(!q){ renderDashRows_(dashCurrentRows, dashCurrentRows.length, false); return; }
+  const filtered = dashCurrentRows.filter(r =>
+    (r.labelerName||'').toLowerCase().includes(q) ||
+    (r.yubikeyEmail||'').toLowerCase().includes(q) ||
+    (r.pcNo||'').toLowerCase().includes(q) ||
+    (r.queueName||'').toLowerCase().includes(q) ||
+    (r.qtcName||'').toLowerCase().includes(q) ||
+    (r.id||'').toLowerCase().includes(q)
+  );
+  renderDashRows_(filtered, filtered.length, false);
+});
+
+function renderDashCards_(cards, totalRows){
+  document.getElementById('dash-cards-count').textContent = cards.length + ' PCs · ' + totalRows + ' rows';
+  const holder = document.getElementById('dash-cards');
+  if(!cards.length){ holder.innerHTML = '<div class="empty">No data for this filter.</div>'; return; }
+  holder.innerHTML = cards.map(c => `
+    <div class="dash-card">
+      <div class="dc-top">
+        <span class="dc-pc">${escapeHtml(c.pcNo)}</span>
+        <span class="dc-badge">${c.total}</span>
+      </div>
+      <div class="dc-name">${escapeHtml(c.labelerName || '—')}</div>
+      <div class="dc-email">${escapeHtml(c.yubikeyEmail || '—')}</div>
+      <div>${c.queues.map(q => `<span class="dc-queue">${escapeHtml(q.queueName)} ${q.count}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+function renderDashRows_(rows, totalRows, capped){
+  document.getElementById('dash-rows-count').textContent = rows.length + (capped ? (' shown of ' + totalRows) : ' rows shown');
+  const body = document.getElementById('dash-rows-body');
+  if(!rows.length){ body.innerHTML = '<tr><td colspan="14" class="empty">No rows.</td></tr>'; return; }
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td>${escapeHtml(r.timestamp)}</td>
+      <td>${escapeHtml(r.shift)}</td>
+      <td>${escapeHtml(r.unit)}</td>
+      <td>${escapeHtml(r.qtcName)}</td>
+      <td>${escapeHtml(r.yubikeyEmail)}</td>
+      <td>${escapeHtml(r.labelerName)}</td>
+      <td>${escapeHtml(r.pcNo)}</td>
+      <td>${escapeHtml(r.modality)}</td>
+      <td>${escapeHtml(r.queueName)}</td>
+      <td class="mono">${escapeHtml(r.id)}</td>
+      <td>${r.objectCount}</td>
+      <td><span class="dash-badge-pass ${escapeHtml(r.pass)}">${escapeHtml(r.pass)}</span></td>
+      <td>${escapeHtml(r.stage)}</td>
+      <td>${escapeHtml(r.createdAt)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderDashQueueTable_(qt){
+  const holder = document.getElementById('dash-queue-table');
+  if(!qt.rows.length){ holder.innerHTML = '<div class="empty">No data.</div>'; return; }
+  const passHeaders = qt.passColumns.map(p => `<th>${escapeHtml(p)}</th>`).join('');
+  const bodyRows = qt.rows.map(r => `
+    <tr>
+      <td class="qn">${escapeHtml(r.queueName)}</td>
+      ${qt.passColumns.map(p => `<td>${r.counts[p]}</td>`).join('')}
+      <td><strong>${r.total}</strong></td>
+    </tr>
+  `).join('');
+  const totalRow = `
+    <tr>
+      <td>Total</td>
+      ${qt.passColumns.map(p => `<td>${qt.grandTotal.counts[p]}</td>`).join('')}
+      <td>${qt.grandTotal.total}</td>
+    </tr>
+  `;
+  holder.innerHTML = `<table class="dash-qtable">
+    <thead><tr><th>Queue</th>${passHeaders}<th>Total</th></tr></thead>
+    <tbody>${bodyRows}${totalRow}</tbody>
+  </table>`;
+}
+
+function renderDashModality_(items){
+  const holder = document.getElementById('dash-modality');
+  if(!items.length){ holder.innerHTML = '<div class="empty">No data.</div>'; return; }
+  holder.innerHTML = items.map(it => `
+    <div class="dash-modrow">
+      <div class="mr-top"><span>${escapeHtml(it.label)}</span><span>${it.count} · ${it.pct}%</span></div>
+      <div class="mr-bar"><div class="mr-fill" style="width:${it.pct}%"></div></div>
+    </div>
+  `).join('');
+}
+
+function renderDashChips_(holderId, items){
+  const holder = document.getElementById(holderId);
+  if(!items.length){ holder.innerHTML = '<div class="empty">No data.</div>'; return; }
+  holder.innerHTML = items.map(it => `<span class="dash-chip">${escapeHtml(it.name)}<b>${it.count}</b></span>`).join('');
+}
+
+// ---------------- QUALITY (admin-only) ----------------
+let qualFilterOptionsLoaded = false;
+
+function getQualityFilters_(){
+  return { email: document.getElementById('qual-f-email').value };
+}
+
+async function loadQuality(){
+  const msgEl = document.getElementById('qual-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('getQualityData', getQualityFilters_());
+    if(!res.success){ msgEl.innerHTML = '<div class="msg err">Failed to load quality data.</div>'; return; }
+
+    if(!qualFilterOptionsLoaded){
+      fillSelect_(document.getElementById('qual-f-email'), res.filterOptions.emails, 'All emails');
+      qualFilterOptionsLoaded = true;
+    }
+
+    document.getElementById('qual-count').textContent = res.taskCount;
+    renderQualityCards_(res.tasks);
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+document.getElementById('qual-apply-btn').addEventListener('click', loadQuality);
+document.getElementById('qual-reset-btn').addEventListener('click', ()=>{
+  document.getElementById('qual-f-email').value = '';
+  loadQuality();
+});
+
+function renderQualityCards_(tasks){
+  const holder = document.getElementById('qual-cards');
+  if(!tasks.length){ holder.innerHTML = '<div class="empty">No tasks found.</div>'; return; }
+  holder.innerHTML = tasks.map(t => `
+    <div class="qual-card">
+      <div class="qc-title">📄 ${escapeHtml(t.taskName)}</div>
+      <div class="qc-meta"><span>🆔 Task ID:</span><b>${escapeHtml(t.taskId)}</b></div>
+      <div class="qc-meta"><span>📅 Submitted Date:</span><b>${escapeHtml(t.submittedDate)}</b></div>
+      <div class="qual-metric"><span>Artifacts</span><span class="qm-val">${escapeHtml(t.artifacts)}</span></div>
+      <div class="qual-metric"><span>Attribute</span><span class="qm-val">${escapeHtml(t.attribute)}</span></div>
+      <div class="qual-metric"><span>Total Accuracy</span><span class="qm-val">${escapeHtml(t.totalAccuracy)}</span></div>
+    </div>
+  `).join('');
+}
+
+// ---------------- TEAMS / BATCHES (admin-only) ----------------
+// Each batch = one sheet (tab) in the spreadsheet; the server reads them.
+let teamsPeopleMap = {};     // key -> person
+let teamsBatches = [];       // [{name, people:[...], warning}] oldest -> newest
+let teamsSelectedBatch = null;
+let teamsCurrentKey = null;
+let tmDay = 1;           // 1..3 = Day 1 / Day 2 / Day 3
+let tmComments = ['', '', '', ''];
+let tmRatings = [0, 0, 0, 0];   // 0 = no rating
+let tmFeedback = '';     // '' | Pass | Failed | Pending | Dropped out
+let tmTrainers = ['', '', ''];   // chosen trainer for Trainer P1 / P2 / P3
+
+// Same colors as the Attend sheet in Google Sheets
+const ATT_STYLES = {
+  'T1':{bg:'#cfe2f3',fg:'#1155cc'}, 'T2':{bg:'#3d85c6',fg:'#ffffff'}, 'T3':{bg:'#674ea7',fg:'#ffffff'},
+  'P':{bg:'#38761d',fg:'#ffffff'}, 'TP':{bg:'#f1c232',fg:'#3d3400'}, 'T':{bg:'#d9ead3',fg:'#274e13'},
+  'O':{bg:'#45818e',fg:'#ffffff'}, 'E':{bg:'#a64d79',fg:'#ffffff'}, '0':{bg:'#cc0000',fg:'#ffffff'}
+};
+
+function renderTeamAttendance(p){
+  const vals = Array.isArray(p.attend) ? p.attend : [];
+  const sumEl = document.getElementById('tm-att-summary');
+  const chipsEl = document.getElementById('tm-att-chips');
+  if(!vals.length){
+    sumEl.textContent = 'No attendance yet (not checked in / not in Entries).';
+    chipsEl.innerHTML = '';
+    return;
+  }
+  const absent = vals.filter(v => String(v).trim() === '0').length;
+  const present = vals.filter(v => { const t = String(v).trim(); return t !== '' && t !== '0'; }).length;
+  sumEl.innerHTML = '<b>' + present + '</b> present · <b>' + absent + '</b> absent · Day <b>' + vals.length + '</b>';
+  chipsEl.innerHTML = vals.map((v, i) => {
+    const t = String(v).trim();
+    const st = ATT_STYLES[t];
+    const style = st ? 'background:' + st.bg + ';color:' + st.fg + ';border-color:' + st.bg : '';
+    return '<div class="att-chip" style="' + style + '" title="Day ' + (i+1) + '">' + escapeHtml(t || '–') + '<small>D' + (i+1) + '</small></div>';
+  }).join('');
+}
+
+function renderTeamStage(p){
+  const nameEl = document.getElementById('tm-stage-name');
+  const subEl = document.getElementById('tm-stage-sub');
+  const barEl = document.getElementById('tm-stage-bar');
+  if(p.stageInfo){ // read from the sheet's checkbox columns
+    nameEl.textContent = p.stageInfo.label;
+    subEl.textContent = (p.stageInfo.phase || '') + ' · Step ' + p.stageInfo.step + ' of ' + p.stageInfo.total;
+    barEl.style.width = Math.round((p.stageInfo.step / p.stageInfo.total) * 100) + '%';
+    return;
+  }
+  const idx = stageIndex(p.stage);
+  if(idx === -1){
+    nameEl.textContent = '—';
+    subEl.textContent = 'No stage selected yet';
+    barEl.style.width = '0%';
+    return;
+  }
+  const st = STAGES[idx];
+  nameEl.textContent = st.label;
+  subEl.textContent = (PHASE_LABELS[st.phase] || '') + ' · Step ' + (idx+1) + ' of ' + STAGES.length;
+  barEl.style.width = Math.round(((idx+1) / STAGES.length) * 100) + '%';
+}
+
+function paintStars(){
+  document.querySelectorAll('#tm-stars span').forEach(sp=>{
+    sp.classList.toggle('on', parseInt(sp.getAttribute('data-v'),10) <= tmRatings[tmDay-1]);
+  });
+}
+// Trainers: one button (dropdown) per "Trainer P1/P2/P3" column of the sheet: tap it and choose a name
+function renderTrainers(p){
+  const box = document.getElementById('tm-trainers');
+  const cols = p._trainerCols || [];
+  if(!cols.length){ box.innerHTML = ''; return; }
+  box.innerHTML = cols.map(tc => {
+    const cur = tmTrainers[tc.n - 1] || '';
+    const names = tc.options.slice();
+    if(cur && names.indexOf(cur) === -1) names.push(cur); // a name typed in the sheet by hand
+    return '<label>' + escapeHtml(tc.label) + '</label>' +
+      '<select class="tr-select" data-n="' + tc.n + '">' +
+      '<option value="">— Choose trainer —</option>' +
+      names.map(n => '<option value="' + escapeHtml(n) + '"' + (n === cur ? ' selected' : '') + '>' + escapeHtml(n) + '</option>').join('') +
+      '</select>';
+  }).join('');
+  box.querySelectorAll('.tr-select').forEach(sel => {
+    sel.addEventListener('change', () => { tmTrainers[parseInt(sel.getAttribute('data-n'), 10) - 1] = sel.value; });
+  });
+}
+
+function paintDayTabs(){
+  document.querySelectorAll('#tm-days .day-tab').forEach(b=>{
+    const d = parseInt(b.getAttribute('data-day'), 10);
+    b.classList.toggle('active', d === tmDay);
+    b.classList.toggle('has', !!(String(tmComments[d-1] || '').trim() || tmRatings[d-1]));
+  });
+  document.getElementById('tm-comment-label').textContent = 'Comment — Day ' + tmDay;
+  document.getElementById('tm-rating-label').textContent = 'Rating — Day ' + tmDay;
+}
+function selectDay(d){
+  tmComments[tmDay-1] = document.getElementById('tm-comment').value; // keep what was typed
+  tmDay = d;
+  document.getElementById('tm-comment').value = tmComments[tmDay-1] || '';
+  paintStars();
+  paintDayTabs();
+}
+// Day buttons: 3 for normal batches, 4 for special ones (e.g. "youssef saper")
+function buildDayTabs(n){
+  const box = document.getElementById('tm-days');
+  box.style.gridTemplateColumns = 'repeat(' + n + ',1fr)';
+  let html = '';
+  for(let d = 1; d <= n; d++) html += '<button type="button" class="day-tab" data-day="' + d + '">Day ' + d + '</button>';
+  box.innerHTML = html;
+}
+document.getElementById('tm-days').addEventListener('click', (e)=>{
+  const b = e.target.closest('.day-tab');
+  if(b) selectDay(parseInt(b.getAttribute('data-day'), 10));
+});
+document.getElementById('tm-comment').addEventListener('input', (e)=>{
+  tmComments[tmDay-1] = e.target.value;
+  paintDayTabs();
+});
+function paintFeedback(){
+  document.querySelectorAll('#tm-feedback .fb-btn').forEach(b=>{
+    b.classList.toggle('active', b.getAttribute('data-fb') === tmFeedback);
+  });
+}
+document.querySelectorAll('#tm-stars span').forEach(sp=>{
+  sp.addEventListener('click', ()=>{
+    const v = parseInt(sp.getAttribute('data-v'),10);
+    tmRatings[tmDay-1] = (tmRatings[tmDay-1] === v) ? 0 : v; // tap the same star again to clear
+    paintStars();
+    paintDayTabs();
+  });
+});
+document.querySelectorAll('#tm-feedback .fb-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const v = b.getAttribute('data-fb');
+    tmFeedback = (tmFeedback === v) ? '' : v; // tap again to clear
+    paintFeedback();
+  });
+});
+
+async function loadTeams(silent){
+  const holder = document.getElementById('teams-holder');
+  const msgEl = document.getElementById('teams-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminGetTeams');
+    teamsBatches = res.batches || [];
+    teamsPeopleMap = {};
+    teamsBatches.forEach(b => b.people.forEach(p => { teamsPeopleMap[p.key] = p; p._trainerCols = b.trainerCols || []; }));
+    if(!teamsBatches.length){
+      holder.innerHTML = '<div class="empty">No batch sheets found. Add a new sheet (tab) named after the batch, e.g. 8/10.</div>';
+      return;
+    }
+    // keep the current selection if it still exists; otherwise open the newest batch
+    const names = teamsBatches.map(b => b.name);
+    if(!teamsSelectedBatch || names.indexOf(teamsSelectedBatch) === -1){
+      teamsSelectedBatch = teamsBatches[teamsBatches.length-1].name;
+    }
+    renderTeams();
+  }catch(e){
+    if(silent) return; // background refresh failed: keep the current view
+    holder.innerHTML = '';
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+
+// "!" badge: rating of 3 or less (1-3), or the trainee has a comment.
+function attentionReasons(p){
+  const out = [];
+  const ratings = Array.isArray(p.ratings) ? p.ratings : [];
+  const comments = Array.isArray(p.comments) ? p.comments : [];
+  for(let i = 0; i < ratings.length; i++){
+    const r = parseInt(ratings[i], 10);
+    if(r >= 1 && r <= 3) out.push('Day ' + (i+1) + ' rating ' + r);
+  }
+  for(let i = 0; i < comments.length; i++){
+    if(String(comments[i] || '').trim() !== '') out.push('Day ' + (i+1) + ' comment');
+  }
+  return out;
+}
+// Don't print "Batch BATCH. 11 October" when the sheet name already says batch.
+function batchLabel(name){ return /^batch/i.test(name || '') ? name : 'Batch ' + name; }
+
+function renderTeams(){
+  const holder = document.getElementById('teams-holder');
+  const chips = teamsBatches.map(b => `
+    <button class="batch-chip ${b.name===teamsSelectedBatch?'active':''}" data-batch="${escapeHtml(b.name)}">
+      ${escapeHtml(batchLabel(b.name))}<span class="cnt">${b.people.length}</span>
+    </button>`).join('');
+
+  const batch = teamsBatches.find(b => b.name === teamsSelectedBatch);
+  const people = batch ? batch.people : [];
+  const presentCount = people.filter(p => p.todayStatus === 'present').length;
+  const attentionCount = people.filter(p => attentionReasons(p).length).length;
+  const tiles = people.map(p => `
+    <div class="team-pc ${p.todayStatus}" data-key="${escapeHtml(p.key)}">
+      ${escapeHtml(p.pc || '—')}
+      ${attentionReasons(p).length ? '<span class="warn" title="' + escapeHtml(attentionReasons(p).join(' · ')) + '">!</span>' : ''}
+    </div>`).join('');
+  const warning = (batch && batch.warning) ? `<div class="msg err">${escapeHtml(batch.warning)}</div>` : '';
+  const body = people.length
+    ? `<div class="team-grid">${tiles}</div>`
+    : (batch && batch.warning ? '' : '<div class="empty">No trainees in this sheet yet.</div>');
+
+  holder.innerHTML = `
+    <div class="batch-bar">${chips}</div>
+    <div class="panel">
+      <h2>${escapeHtml(batchLabel(teamsSelectedBatch))} — PCs</h2>
+      <div class="batch-summary"><b>${people.length}</b> trainees · <b>${presentCount}</b> present · <b>${attentionCount}</b> need attention</div>
+      ${warning}
+      ${body}
+      <div class="team-legend">
+        <span><span class="dotleg" style="background:var(--ok)"></span> Present</span>
+        <span><span class="dotleg" style="background:var(--danger)"></span> Absent</span>
+        <span><span class="dotleg" style="background:var(--amber)"></span> ! Rating 3 or less, or has a comment</span>
+      </div>
+    </div>`;
+
+  holder.querySelectorAll('.batch-chip').forEach(ch=>{
+    ch.addEventListener('click', ()=>{ teamsSelectedBatch = ch.getAttribute('data-batch'); renderTeams(); });
+  });
+  holder.querySelectorAll('.team-pc').forEach(el=>{
+    el.addEventListener('click', ()=> openTeamModal(el.getAttribute('data-key')));
+  });
+}
+
+function openTeamModal(key){
+  const p = teamsPeopleMap[key];
+  if(!p) return;
+  teamsCurrentKey = key;
+  document.getElementById('tm-pc').textContent = 'PC ' + (p.pc || '—');
+  const st = document.getElementById('tm-status');
+  st.textContent = p.todayStatus === 'present' ? 'Present today' : 'Absent today';
+  st.className = 'tm-status ' + p.todayStatus;
+  document.getElementById('tm-flash').textContent = p.flash || '—';
+  document.getElementById('tm-name').textContent = p.name || '—';
+  tmDay = 1;
+  buildDayTabs(p.days || 3);
+  tmComments = [0, 1, 2, 3].map(i => (p.comments && p.comments[i]) || '');
+  tmRatings = [0, 1, 2, 3].map(i => parseInt(p.ratings && p.ratings[i], 10) || 0);
+
+  document.getElementById('tm-comment').value = tmComments[0];
+  tmFeedback = p.feedback || '';
+  tmTrainers = [0, 1, 2].map(i => (p.trainers && p.trainers[i]) || '');
+  paintStars(); paintFeedback(); paintDayTabs();
+  renderTrainers(p);
+  renderTeamAttendance(p);
+  renderTeamStage(p);
+  document.getElementById('tm-msg').innerHTML = '';
+  document.getElementById('team-modal').classList.add('open');
+}
+function closeTeamModal(){ document.getElementById('team-modal').classList.remove('open'); }
+
+document.getElementById('tm-close').addEventListener('click', closeTeamModal);
+document.getElementById('team-modal').addEventListener('click', (e)=>{ if(e.target.id === 'team-modal') closeTeamModal(); });
+
+document.getElementById('tm-save').addEventListener('click', async ()=>{
+  const p = teamsPeopleMap[teamsCurrentKey];
+  if(!p) return;
+  const btn = document.getElementById('tm-save');
+  const msgEl = document.getElementById('tm-msg');
+  tmComments[tmDay-1] = document.getElementById('tm-comment').value; // current day's text
+  const ratingsOut = tmRatings.map(v => v ? String(v) : '');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  msgEl.innerHTML = '';
+  try{
+    const saved = await runScript('adminSaveComment', p.batch, p.rowNum, tmComments, ratingsOut, tmFeedback, tmTrainers);
+    p.comments = tmComments.slice(); p.ratings = ratingsOut; p.feedback = tmFeedback; p.trainers = tmTrainers.slice();
+    var extraNote = (saved && saved.copiedTo) ? ' · row copied to ' + saved.copiedTo : ((saved && saved.alreadyThere) ? ' · already in youssef saper' : '');
+    renderTeams(); // update the ! badge on the tiles
+    msgEl.innerHTML = '<div class="msg ok">Saved ✓' + extraNote + '</div>';
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Save';
+});
+
+// ---------------- ATTENDANCE TAB (admin-only) ----------------
+// The attendance is computed on the server from the check-ins (no Attend sheet).
+let admAttData = null;     // last response of adminGetAttendance
+let admAttFilter = '';     // chosen shift tab ('' = all)
+let admAttCell = null;     // the cell being edited: {b, p, d}
+let admAttBusy = false;
+
+async function loadAdminAttendance(silent){
+  const holder = document.getElementById('att-admin-holder');
+  const msgEl = document.getElementById('att-admin-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminGetAttendance', { sheet: admAttFilter });
+    admAttData = res;
+    fillSelect_(document.getElementById('att-f-sheet'), res.sheets || [], 'All shifts');
+    renderAdminAttendance();
+  }catch(e){
+    if(silent) return; // background refresh failed: keep the current view
+    holder.innerHTML = '';
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+
+function renderAdminAttendance(){
+  const holder = document.getElementById('att-admin-holder');
+  const batches = (admAttData && admAttData.batches) || [];
+  if(!batches.length){
+    holder.innerHTML = '<div class="empty">No trainees with a Join Date yet. New sign-ups appear here automatically.</div>';
+    return;
+  }
+  holder.innerHTML = batches.map((b, bi) => {
+    const head = '<th class="nm">Name</th>' + b.days.map(d => '<th>' + escapeHtml(d) + '</th>').join('');
+    const rows = b.people.map((p, pi) => {
+      const cells = b.days.map((d, di) => {
+        const v = String(p.values[di] === undefined ? '' : p.values[di]).trim();
+        const st = ATT_STYLES[v];
+        const style = st ? 'background:' + st.bg + ';color:' + st.fg + ';border-color:' + st.bg : '';
+        return '<td><span class="att-cell" data-b="' + bi + '" data-p="' + pi + '" data-d="' + di + '" style="' + style + '">' + (escapeHtml(v) || '–') + '</span></td>';
+      }).join('');
+      return '<tr class="' + (p.dropped ? 'dropped' : '') + '"><td class="nm" title="' + escapeHtml(p.nationalId) + '">' + escapeHtml(p.name || p.nationalId) + '</td>' + cells + '</tr>';
+    }).join('');
+    return '<div class="panel">' +
+      '<div class="att-block-title"><span class="tag">▶ ' + escapeHtml(b.label) + '</span>' + escapeHtml(b.sheet) +
+      '<span class="sub">' + b.people.length + ' trainees</span></div>' +
+      '<div class="att-wrap"><table class="att-table"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  }).join('');
+  holder.querySelectorAll('.att-cell').forEach(el => {
+    el.addEventListener('click', () => openAttModal(parseInt(el.getAttribute('data-b'),10), parseInt(el.getAttribute('data-p'),10), parseInt(el.getAttribute('data-d'),10)));
+  });
+}
+
+function openAttModal(b, p, d){
+  const batch = admAttData.batches[b];
+  const person = batch.people[p];
+  admAttCell = { b: b, p: p, d: d };
+  document.getElementById('am-name').textContent = person.name || person.nationalId;
+  document.getElementById('am-day').textContent = batch.days[d] + ' · Day ' + (d + 1);
+  document.getElementById('am-msg').innerHTML = '';
+  document.getElementById('att-modal').classList.add('open');
+}
+function closeAttModal(){ document.getElementById('att-modal').classList.remove('open'); admAttCell = null; }
+document.getElementById('am-close').addEventListener('click', closeAttModal);
+document.getElementById('att-modal').addEventListener('click', (e)=>{ if(e.target.id === 'att-modal') closeAttModal(); });
+
+document.getElementById('am-options').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('.fb-btn');
+  if(!btn || !admAttCell || admAttBusy) return;
+  const batch = admAttData.batches[admAttCell.b];
+  const person = batch.people[admAttCell.p];
+  const msgEl = document.getElementById('am-msg');
+  admAttBusy = true;
+  msgEl.innerHTML = '<div class="msg ok">Saving…</div>';
+  try{
+    const res = await runScript('adminSetAttendance', person.nationalId, batch.keys[admAttCell.d], btn.getAttribute('data-v'));
+    person.values = res.values;
+    person.dropped = res.dropped;
+    closeAttModal();
+    renderAdminAttendance();
+  }catch(err){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(err)) + '</div>';
+  }
+  admAttBusy = false;
+});
+
+document.getElementById('att-f-sheet').addEventListener('change', (e)=>{ admAttFilter = e.target.value; loadAdminAttendance(); });
+document.getElementById('att-reload-btn').addEventListener('click', ()=> loadAdminAttendance());
+
+// ---------------- Refresh button (reloads what you are looking at) ----------------
+document.getElementById('refresh-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('refresh-btn');
+  if(btn.disabled) return;
+  btn.disabled = true; btn.classList.add('busy');
+  const active = (document.querySelector('.tab-btn.active') || {}).dataset;
+  const tab = active && active.tab;
+  try{
+    if(userIsAdmin && tab === 'teams') await loadTeams();
+    else if(userIsAdmin && tab === 'attendance') await loadAdminAttendance();
+    else if(userIsAdmin && tab === 'dashboard') await loadDashboard();
+    else if(userIsAdmin && tab === 'quality') await loadQuality();
+    else if(userIsAdmin && tab === 'admin') await loadAdminTable();
+    else if(currentNationalId){ await loadAttendance(); await loadStagePage(); }
+    if(tab) autoLast[tab] = Date.now();
+  }catch(e){ /* the tab shows its own error */ }
+  btn.classList.remove('busy'); btn.disabled = false;
+});
+
+// ---------------- Auto refresh (admin tabs, no manual reload) ----------------
+// Teams every 30s, Dashboard / Quality / Admin every 60s. It only runs while the
+// page is visible, you are logged in as admin, and the Teams card is NOT open
+// (so nothing you are typing gets overwritten).
+const AUTO_REFRESH_MS = { teams: 30000, attendance: 60000, dashboard: 60000, quality: 60000, admin: 60000 };
+var autoLast = {};
+let autoBusy = false;
+
+async function autoRefreshTick(){
+  if(!userIsAdmin || autoBusy || document.hidden) return;
+  const active = (document.querySelector('.tab-btn.active') || {}).dataset;
+  const tab = active && active.tab;
+  if(!tab || !AUTO_REFRESH_MS[tab]) return;
+  if(document.getElementById('team-modal').classList.contains('open')) return;
+  if(document.getElementById('att-modal').classList.contains('open')) return;
+  if(Date.now() - (autoLast[tab] || 0) < AUTO_REFRESH_MS[tab]) return;
+
+  autoBusy = true;
+  try{
+    if(tab === 'teams') await loadTeams(true);
+    else if(tab === 'dashboard'){
+      await loadDashboard();
+      const search = document.getElementById('dash-search');
+      if(search.value.trim()) search.dispatchEvent(new Event('input')); // keep the search filter applied
+    }
+    else if(tab === 'quality') await loadQuality();
+    else if(tab === 'attendance') await loadAdminAttendance(true);
+    else if(tab === 'admin') await loadAdminTable();
+  }catch(e){ /* ignore, try again next time */ }
+  autoLast[tab] = Date.now();
+  autoBusy = false;
+}
+setInterval(autoRefreshTick, 5000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) autoRefreshTick(); });
+
+// ---------------- init ----------------
+(async function init(){
+  await loadAdminStatus();
+  loadTheme();
+})();
+</script>
+</body>
+</html>

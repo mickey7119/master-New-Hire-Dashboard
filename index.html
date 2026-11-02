@@ -306,6 +306,16 @@
   .att-block-title{ display:flex; align-items:center; gap:10px; margin:0 0 10px; font-size:14px; font-weight:800; }
   .att-block-title .tag{ background:#000; color:#fff; border-radius:6px; padding:3px 10px; }
   .att-block-title .sub{ color:var(--muted); font-weight:600; font-size:12px; }
+  .hide-btn{ background:transparent; border:1px solid var(--line); color:var(--muted); font-family:'Space Grotesk',sans-serif; font-weight:800;
+    font-size:12px; padding:7px 14px; border-radius:100px; cursor:pointer; margin-left:auto; }
+  .hide-btn:hover{ border-color:var(--danger); color:var(--danger); }
+  .batch-chip.batches-btn{ border-style:dashed; color:var(--muted); }
+  select.shift-select{ width:auto; min-width:150px; font-size:13px; font-weight:700; padding:9px 14px; border-radius:100px; cursor:pointer; }
+  .hb-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; margin-top:8px; text-align:left;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px; font-size:13px; font-weight:700; }
+  .hb-row small{ display:block; color:var(--muted); font-weight:600; font-size:11.5px; margin-top:2px; }
+  #hb-modal{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:16px; }
+  #hb-modal.open{ display:flex; }
   #att-modal{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:16px; }
   #att-modal.open{ display:flex; }
 
@@ -706,9 +716,10 @@
       <div class="dash-filters">
         <select id="att-f-sheet"><option value="">All shifts</option></select>
         <button class="btn secondary" id="att-reload-btn">Reload</button>
+        <button class="btn secondary" id="att-batches-btn">🗂 Batches (0)</button>
       </div>
       <p style="font-size:12.5px;color:var(--muted);margin:0">
-        Day 1 = the join date. <b>T1 / T2 / T3 / TP</b> = days they came, <b>0</b> = missed.
+        Day 1 = the join date. A check-in on day 1 / 2 / 3 = <b>T1 / T2 / T3</b>, later days = <b>TP</b>; <b>0</b> = missed.
         Two 0 in a row before T3 = red row + Dropped out. Tap any cell to set it by hand.
       </p>
       <div id="att-admin-msg"></div>
@@ -766,6 +777,17 @@
 
 </div>
 
+<!-- ===================== HIDDEN BATCHES LIST ===================== -->
+<div id="hb-modal">
+  <div class="tm-box">
+    <button class="tm-close" id="hb-close">✕</button>
+    <div class="tm-pc">Hidden batches</div>
+    <div class="tm-status" style="color:var(--muted)">Tap Show to bring a batch back</div>
+    <div id="hb-list"></div>
+    <div id="hb-msg"></div>
+  </div>
+</div>
+
 <!-- ===================== ATTENDANCE CELL MODAL ===================== -->
 <div id="att-modal">
   <div class="tm-box">
@@ -775,6 +797,9 @@
     <div class="fb-row" id="am-options">
       <button type="button" class="fb-btn" data-v="">Auto</button>
       <button type="button" class="fb-btn" data-v="present">Present</button>
+      <button type="button" class="fb-btn" data-v="T1">T1</button>
+      <button type="button" class="fb-btn" data-v="T2">T2</button>
+      <button type="button" class="fb-btn" data-v="T3">T3</button>
       <button type="button" class="fb-btn" data-v="0">Absent (0)</button>
       <button type="button" class="fb-btn" data-v="P">P</button>
       <button type="button" class="fb-btn" data-v="O">O</button>
@@ -802,14 +827,15 @@
     <div class="stars" id="tm-stars">
       <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
     </div>
+    <div id="tm-trainers"></div>
     <label>Feedback</label>
     <div class="fb-row" id="tm-feedback">
       <button type="button" class="fb-btn" data-fb="Pass">Pass</button>
       <button type="button" class="fb-btn" data-fb="P">P</button>
       <button type="button" class="fb-btn" data-fb="Failed">Failed</button>
+      <button type="button" class="fb-btn" data-fb="Pending">Pending</button>
       <button type="button" class="fb-btn" data-fb="Dropped out">Dropped out</button>
     </div>
-    <div id="tm-trainers"></div>
     <label>Attendance</label>
     <div class="att-summary" id="tm-att-summary">—</div>
     <div class="att-chips" id="tm-att-chips"></div>
@@ -819,7 +845,7 @@
       <div class="st-sub" id="tm-stage-sub"></div>
       <div class="stage-bar"><div id="tm-stage-bar" style="width:0%"></div></div>
     </div>
-    <div class="actions-row" style="justify-content:center"><button class="btn" id="tm-save">Save</button></div>
+    <div class="actions-row" style="justify-content:center"><button class="btn" id="tm-save">Save</button><button class="btn secondary" id="tm-hide-person" style="display:none">🙈 Hide trainee</button></div>
     <div id="tm-msg"></div>
   </div>
 </div>
@@ -875,13 +901,13 @@ function saveAdminToken(t){
 const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
   'adminAddPerson','adminGetAllPeople','adminDeletePerson','adminGetTeams','adminSaveComment',
   'getDashboardData','getQualityData','adminSetupDailyTrigger','adminArrangeShiftSheets',
-  'adminGetAttendance','adminSetAttendance'];
+  'adminGetAttendance','adminSetAttendance','adminHideBatch','adminHideBufferBatch','adminHideBufferPerson'];
 
 // ===== Hosting =====
 // Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
 // Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
 const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
-  const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
+const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
 function runScript(fnName, ...args){
   if(ADMIN_FNS.indexOf(fnName) !== -1) args.push(adminToken); // token is always the LAST argument
@@ -1397,8 +1423,8 @@ function renderDynamicStages(){
       const id = opt.getAttribute('data-id');
       const s = (stDynamic || []).find(x => x.id === id);
       // tapping a stage ticks every box before it in the sheet
-      if(s && !s.done && !s.current) await apply(id, false);
       if(s && s.link) window.open(s.link, '_blank');
+      if(s && !s.done && !s.current) await apply(id, false);
     });
   });
   const fin = document.getElementById('st-finish-btn');
@@ -1464,6 +1490,8 @@ function renderStagePicker(){
       const idx = parseInt(opt.getAttribute('data-idx'), 10);
       const currentIdx = stageIndex(stCurrentPerson.stage);
 
+      // open the page first (inside the tap), or the browser blocks the pop-up after the server call
+      if(stageObj.link) window.open(stageObj.link, '_blank');
       // Jumping to any stage (forward OR backward) is allowed — tap a
       // completed one to go back to it, or a future one to advance.
       if(idx !== currentIdx){
@@ -1477,7 +1505,6 @@ function renderStagePicker(){
           }
         }catch(e){ alert('Error: ' + errText(e)); }
       }
-      if(stageObj.link) window.open(stageObj.link, '_blank');
     });
   });
 }
@@ -1796,6 +1823,8 @@ function renderQualityCards_(tasks){
 let teamsPeopleMap = {};     // key -> person
 let teamsBatches = [];       // [{name, people:[...], warning}] oldest -> newest
 let teamsSelectedBatch = null;
+let teamsShiftFilter = '';   // '' = all shifts (the filter is for SV only)
+let teamsShiftList = [];      // [{code, name}] shifts the user can see
 let teamsCurrentKey = null;
 let tmDay = 1;           // 1..3 = Day 1 / Day 2 / Day 3
 let tmComments = ['', '', '', ''];
@@ -1861,7 +1890,8 @@ function paintStars(){
 // Trainers: one button (dropdown) per "Trainer P1/P2/P3" column of the sheet: tap it and choose a name
 function renderTrainers(p){
   const box = document.getElementById('tm-trainers');
-  const cols = p._trainerCols || [];
+  // Day 1 shows "Trainar P1", Day 2 shows "Trainar P2", Day 3 shows "Trainar P3"
+  const cols = (p._trainerCols || []).filter(tc => tc.n === tmDay);
   if(!cols.length){ box.innerHTML = ''; return; }
   box.innerHTML = cols.map(tc => {
     const cur = tmTrainers[tc.n - 1] || '';
@@ -1893,6 +1923,8 @@ function selectDay(d){
   document.getElementById('tm-comment').value = tmComments[tmDay-1] || '';
   paintStars();
   paintDayTabs();
+  const cp = teamsPeopleMap[teamsCurrentKey];
+  if(cp) renderTrainers(cp);
 }
 // Day buttons: 3 for normal batches, 4 for special ones (e.g. "youssef saper")
 function buildDayTabs(n){
@@ -1938,16 +1970,17 @@ async function loadTeams(silent){
   try{
     const res = await runScript('adminGetTeams');
     teamsBatches = res.batches || [];
+    teamsShiftList = res.shifts || [];
     teamsPeopleMap = {};
     teamsBatches.forEach(b => b.people.forEach(p => { teamsPeopleMap[p.key] = p; p._trainerCols = b.trainerCols || []; }));
     if(!teamsBatches.length){
-      holder.innerHTML = '<div class="empty">No batch sheets found. Add a new sheet (tab) named after the batch, e.g. 8/10.</div>';
+      holder.innerHTML = '<div class="empty">No shift tabs found. Check SHIFT_SHEETS in Code.gs.</div>';
       return;
     }
-    // keep the current selection if it still exists; otherwise open the newest batch
-    const names = teamsBatches.map(b => b.name);
-    if(!teamsSelectedBatch || names.indexOf(teamsSelectedBatch) === -1){
-      teamsSelectedBatch = teamsBatches[teamsBatches.length-1].name;
+    // keep the current selection if it is still shown; otherwise open the newest visible batch
+    const shown = teamsBatches.filter(b => !b.hidden);
+    if(!teamsSelectedBatch || !shown.some(b => b.name === teamsSelectedBatch)){
+      teamsSelectedBatch = shown.length ? shown[shown.length - 1].name : null;
     }
     renderTeams();
   }catch(e){
@@ -1956,6 +1989,48 @@ async function loadTeams(silent){
     msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
   }
 }
+
+// ---- hide a finished batch / bring it back (shared by Teams and Attendance) ----
+async function hideBatch(batch, btn, reload){
+  if(!batch || !(batch.sheet || batch.buffer)) return;
+  if(!confirm('Hide this batch?\nIts trainees and its attendance disappear from Teams and Attendance. Nothing is deleted; open "Batches" to show it again.')) return;
+  btn.disabled = true;
+  try{
+    if(batch.buffer) await runScript('adminHideBufferBatch', batch.name, true);
+    else await runScript('adminHideBatch', batch.sheet, batch.dateKey || batch.key, true);
+    await reload();
+  }catch(e){ alert('Error: ' + errText(e)); btn.disabled = false; }
+}
+let hbReload = null;
+function openHiddenBatches(batches, reload){
+  hbReload = reload;
+  const hidden = batches.filter(b => b.hidden);
+  const list = document.getElementById('hb-list');
+  document.getElementById('hb-msg').innerHTML = '';
+  list.innerHTML = hidden.length ? hidden.map((b, i) =>
+    '<div class="hb-row"><div>' + escapeHtml(b.name || (b.sheet + ' ' + b.label)) +
+    '<small>' + b.people.length + ' trainees</small></div>' +
+    '<button class="btn secondary" style="padding:8px 16px;font-size:12.5px" data-i="' + i + '">Show</button></div>'
+  ).join('') : '<div class="empty">No hidden batches.</div>';
+  list.querySelectorAll('button[data-i]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const b = hidden[parseInt(btn.getAttribute('data-i'), 10)];
+      btn.disabled = true;
+      try{
+        if(b.buffer) await runScript('adminHideBufferBatch', b.name, false);
+        else await runScript('adminHideBatch', b.sheet, b.dateKey || b.key, false);
+        document.getElementById('hb-modal').classList.remove('open');
+        await hbReload();
+      }catch(e){
+        document.getElementById('hb-msg').innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+        btn.disabled = false;
+      }
+    });
+  });
+  document.getElementById('hb-modal').classList.add('open');
+}
+document.getElementById('hb-close').addEventListener('click', ()=> document.getElementById('hb-modal').classList.remove('open'));
+document.getElementById('hb-modal').addEventListener('click', (e)=>{ if(e.target.id === 'hb-modal') e.currentTarget.classList.remove('open'); });
 
 // "!" badge: rating of 3 or less (1-3), or the trainee has a comment.
 function attentionReasons(p){
@@ -1976,9 +2051,30 @@ function batchLabel(name){ return /^batch/i.test(name || '') ? name : 'Batch ' +
 
 function renderTeams(){
   const holder = document.getElementById('teams-holder');
-  const chips = teamsBatches.map(b => `
+  // Shift filter: only SV (full access) sees it, and only when there is more than one shift
+  const inShift = b => !teamsShiftFilter || (b.buffer ? (b.shifts || []).indexOf(teamsShiftFilter) !== -1 : b.shift === teamsShiftFilter);
+  const shownBatches = teamsBatches.filter(b => !b.hidden && inShift(b));
+  const hiddenCount = teamsBatches.filter(b => b.hidden).length;
+  const batchesBtn = '<button class="batch-chip batches-btn" id="teams-batches-btn">🗂 Batches (' + hiddenCount + ')</button>';
+  const shiftSel = (adminInfo && adminInfo.all && teamsShiftList.length > 1)
+    ? '<select class="shift-select" id="teams-shift-select"><option value="">All shifts</option>' +
+      teamsShiftList.map(s => '<option value="' + escapeHtml(s.code) + '"' + (s.code === teamsShiftFilter ? ' selected' : '') + '>' + escapeHtml(s.name) + '</option>').join('') + '</select>'
+    : '';
+  const bindShift = () => {
+    const sel = document.getElementById('teams-shift-select');
+    if(sel) sel.addEventListener('change', ()=>{ teamsShiftFilter = sel.value; teamsSelectedBatch = null; renderTeams(); });
+  };
+  if(shownBatches.length && !shownBatches.some(b => b.name === teamsSelectedBatch)) teamsSelectedBatch = shownBatches[shownBatches.length - 1].name;
+  if(!shownBatches.length){
+    holder.innerHTML = '<div class="batch-bar">' + shiftSel + batchesBtn + '</div><div class="empty">' +
+      (teamsShiftFilter ? 'No batches for this shift.' : 'All batches are hidden. Open <b>Batches</b> to show one.') + '</div>';
+    document.getElementById('teams-batches-btn').addEventListener('click', ()=> openHiddenBatches(teamsBatches, loadTeams));
+    bindShift();
+    return;
+  }
+  const chips = shownBatches.map(b => `
     <button class="batch-chip ${b.name===teamsSelectedBatch?'active':''}" data-batch="${escapeHtml(b.name)}">
-      ${escapeHtml(batchLabel(b.name))}<span class="cnt">${b.people.length}</span>
+      ${escapeHtml(b.buffer ? b.name : batchLabel(b.name))}<span class="cnt">${b.people.length}</span>
     </button>`).join('');
 
   const batch = teamsBatches.find(b => b.name === teamsSelectedBatch);
@@ -1996,9 +2092,12 @@ function renderTeams(){
     : (batch && batch.warning ? '' : '<div class="empty">No trainees in this sheet yet.</div>');
 
   holder.innerHTML = `
-    <div class="batch-bar">${chips}</div>
+    <div class="batch-bar">${shiftSel}${chips}${batchesBtn}</div>
     <div class="panel">
-      <h2>${escapeHtml(batchLabel(teamsSelectedBatch))} — PCs</h2>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <h2 style="margin:0">${escapeHtml((batch && batch.buffer) ? batch.name : batchLabel(teamsSelectedBatch))} — PCs</h2>
+        ${(batch && (batch.sheet || batch.buffer)) ? '<button class="hide-btn" id="teams-hide-btn">🙈 Hide batch</button>' : ''}
+      </div>
       <div class="batch-summary"><b>${people.length}</b> trainees · <b>${presentCount}</b> present · <b>${attentionCount}</b> need attention</div>
       ${warning}
       ${body}
@@ -2009,9 +2108,13 @@ function renderTeams(){
       </div>
     </div>`;
 
-  holder.querySelectorAll('.batch-chip').forEach(ch=>{
+  holder.querySelectorAll('.batch-chip[data-batch]').forEach(ch=>{
     ch.addEventListener('click', ()=>{ teamsSelectedBatch = ch.getAttribute('data-batch'); renderTeams(); });
   });
+  document.getElementById('teams-batches-btn').addEventListener('click', ()=> openHiddenBatches(teamsBatches, loadTeams));
+  bindShift();
+  const hideBtn = document.getElementById('teams-hide-btn');
+  if(hideBtn) hideBtn.addEventListener('click', ()=> hideBatch(batch, hideBtn, loadTeams));
   holder.querySelectorAll('.team-pc').forEach(el=>{
     el.addEventListener('click', ()=> openTeamModal(el.getAttribute('data-key')));
   });
@@ -2029,6 +2132,13 @@ function openTeamModal(key){
   document.getElementById('tm-name').textContent = p.name || '—';
   tmDay = 1;
   buildDayTabs(p.days || 3);
+  document.getElementById('tm-hide-person').style.display = p.owner ? '' : 'none'; // only inside a buffer batch
+  // normal batches pass with "Pass"; the buffer batch passes with "P"
+  document.querySelectorAll('#tm-feedback .fb-btn').forEach(b => {
+    const v = b.getAttribute('data-fb');
+    const hide = (v === 'Pass' && p.passValue === 'P') || (v === 'P' && p.passValue !== 'P');
+    b.style.display = hide ? 'none' : '';
+  });
   tmComments = [0, 1, 2, 3].map(i => (p.comments && p.comments[i]) || '');
   tmRatings = [0, 1, 2, 3].map(i => parseInt(p.ratings && p.ratings[i], 10) || 0);
 
@@ -2044,6 +2154,22 @@ function openTeamModal(key){
 }
 function closeTeamModal(){ document.getElementById('team-modal').classList.remove('open'); }
 
+document.getElementById('tm-hide-person').addEventListener('click', async ()=>{
+  const p = teamsPeopleMap[teamsCurrentKey];
+  if(!p || !p.owner) return;
+  if(!confirm('Hide ' + (p.name || p.nationalId) + ' from ' + p.owner + '?\nHe disappears from this batch (nothing is deleted). When the last one is hidden, the batch goes to Batches.')) return;
+  const btn = document.getElementById('tm-hide-person');
+  const msgEl = document.getElementById('tm-msg');
+  btn.disabled = true;
+  try{
+    await runScript('adminHideBufferPerson', p.owner, p.nationalId);
+    closeTeamModal();
+    await loadTeams();
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false;
+});
 document.getElementById('tm-close').addEventListener('click', closeTeamModal);
 document.getElementById('team-modal').addEventListener('click', (e)=>{ if(e.target.id === 'team-modal') closeTeamModal(); });
 
@@ -2061,6 +2187,7 @@ document.getElementById('tm-save').addEventListener('click', async ()=>{
     p.comments = tmComments.slice(); p.ratings = ratingsOut; p.feedback = tmFeedback; p.trainers = tmTrainers.slice();
     var extraNote = (saved && saved.copiedTo) ? ' · row copied to ' + saved.copiedTo : ((saved && saved.alreadyThere) ? ' · already in youssef saper' : '');
     renderTeams(); // update the ! badge on the tiles
+    loadTeams(true); // Pass moves the trainee to the buffer batch, P removes him: re-read the batches
     msgEl.innerHTML = '<div class="msg ok">Saved ✓' + extraNote + '</div>';
   }catch(e){
     msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
@@ -2094,11 +2221,14 @@ async function loadAdminAttendance(silent){
 function renderAdminAttendance(){
   const holder = document.getElementById('att-admin-holder');
   const batches = (admAttData && admAttData.batches) || [];
-  if(!batches.length){
-    holder.innerHTML = '<div class="empty">No trainees with a Join Date yet. New sign-ups appear here automatically.</div>';
+  const hiddenCount = batches.filter(b => b.hidden).length;
+  document.getElementById('att-batches-btn').textContent = '🗂 Batches (' + hiddenCount + ')';
+  if(!batches.some(b => !b.hidden)){
+    holder.innerHTML = '<div class="empty">' + (batches.length ? 'All batches are hidden. Open <b>Batches</b> to show one.' : 'No trainees with a Join Date yet. New sign-ups appear here automatically.') + '</div>';
     return;
   }
   holder.innerHTML = batches.map((b, bi) => {
+    if(b.hidden) return '';
     const head = '<th class="nm">Name</th>' + b.days.map(d => '<th>' + escapeHtml(d) + '</th>').join('');
     const rows = b.people.map((p, pi) => {
       const cells = b.days.map((d, di) => {
@@ -2111,9 +2241,13 @@ function renderAdminAttendance(){
     }).join('');
     return '<div class="panel">' +
       '<div class="att-block-title"><span class="tag">▶ ' + escapeHtml(b.label) + '</span>' + escapeHtml(b.sheet) +
-      '<span class="sub">' + b.people.length + ' trainees</span></div>' +
+      '<span class="sub">' + b.people.length + ' trainees</span>' +
+      '<button class="hide-btn" data-hide="' + bi + '">🙈 Hide batch</button></div>' +
       '<div class="att-wrap"><table class="att-table"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }).join('');
+  holder.querySelectorAll('.hide-btn[data-hide]').forEach(btn => {
+    btn.addEventListener('click', () => hideBatch(batches[parseInt(btn.getAttribute('data-hide'), 10)], btn, loadAdminAttendance));
+  });
   holder.querySelectorAll('.att-cell').forEach(el => {
     el.addEventListener('click', () => openAttModal(parseInt(el.getAttribute('data-b'),10), parseInt(el.getAttribute('data-p'),10), parseInt(el.getAttribute('data-d'),10)));
   });
@@ -2154,6 +2288,7 @@ document.getElementById('am-options').addEventListener('click', async (e)=>{
 
 document.getElementById('att-f-sheet').addEventListener('change', (e)=>{ admAttFilter = e.target.value; loadAdminAttendance(); });
 document.getElementById('att-reload-btn').addEventListener('click', ()=> loadAdminAttendance());
+document.getElementById('att-batches-btn').addEventListener('click', ()=> openHiddenBatches((admAttData && admAttData.batches) || [], loadAdminAttendance));
 
 // ---------------- Refresh button (reloads what you are looking at) ----------------
 document.getElementById('refresh-btn').addEventListener('click', async ()=>{

@@ -398,7 +398,7 @@
     transition:top .05s linear;
   }
 
-  /* ===== Splash Screen: "Meeg" rising out of glowing water (water line = mid-screen) ===== */
+  /* ===== Splash Screen: "meeg" rising out of glowing water (water line = mid-screen) ===== */
   body.has-splash{ overflow:hidden; }
   #splash{
     position:fixed; inset:0; z-index:9999;
@@ -972,7 +972,7 @@ const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
 // ===== Hosting =====
 // Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
 // Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
-const API_URL = 'https://script.google.com/macros/s/AKfycbyLUOtxaUk4egaoz0rP_UHInymAuonNHjEEMngGz0RwQH4K69f8gU7iRAacprYajk91_w/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw1Ur8E0CYn85d0HMAj0CKMniQh2losz27dOcOhb3nW5PADcGY1myZTx2M3k5Q2SUiMMA/exec';
 const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
 function runScript(fnName, ...args){
@@ -2152,7 +2152,11 @@ async function hideBatch(batch, btn, reload){
 let hbReload = null;
 function openHiddenBatches(batches, reload){
   hbReload = reload;
-  const hidden = batches.filter(b => b.hidden);
+  // newest first (the buffer batch, which has no date, stays on top)
+  const hidden = batches.filter(b => b.hidden).sort((a, b) => {
+    const ka = a.dateKey || a.key || '9999', kb = b.dateKey || b.key || '9999';
+    return ka < kb ? 1 : (ka > kb ? -1 : 0);
+  });
   const list = document.getElementById('hb-list');
   document.getElementById('hb-msg').innerHTML = '';
   list.innerHTML = hidden.length ? hidden.map((b, i) =>
@@ -2349,6 +2353,7 @@ let admAttData = null;     // last response of adminGetAttendance
 let admAttFilter = '';     // chosen shift tab ('' = all)
 let admAttCell = null;     // the cell being edited: {b, p, d}
 let admAttBusy = false;
+let admAttLimit = 5;       // how many batch tables are drawn (the newest first)
 
 async function loadAdminAttendance(silent){
   const holder = document.getElementById('att-admin-holder');
@@ -2375,8 +2380,12 @@ function renderAdminAttendance(){
     holder.innerHTML = '<div class="empty">' + (batches.length ? 'All batches are hidden. Open <b>Batches</b> to show one.' : 'No trainees with a Join Date yet. New sign-ups appear here automatically.') + '</div>';
     return;
   }
-  holder.innerHTML = batches.map((b, bi) => {
-    if(b.hidden) return '';
+  const visibleIdx = batches.map((b, i) => i).filter(i => !batches[i].hidden)
+    .sort((a, b) => batches[b].key.localeCompare(batches[a].key) || batches[a].sheet.localeCompare(batches[b].sheet)); // newest first
+  const drawIdx = visibleIdx.slice(0, admAttLimit);
+  const olderCount = visibleIdx.length - drawIdx.length;
+  holder.innerHTML = drawIdx.map(bi => {
+    const b = batches[bi];
     const head = '<th class="nm">Name</th>' + b.days.map(d => '<th>' + escapeHtml(d) + '</th>').join('');
     const rows = b.people.map((p, pi) => {
       const cells = b.days.map((d, di) => {
@@ -2392,7 +2401,9 @@ function renderAdminAttendance(){
       '<span class="sub">' + b.people.length + ' trainees</span>' +
       '<button class="hide-btn" data-hide="' + bi + '">🙈 Hide batch</button></div>' +
       '<div class="att-wrap"><table class="att-table"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
-  }).join('');
+  }).join('') + (olderCount > 0 ? '<div class="actions-row" style="justify-content:center"><button class="btn secondary" id="att-more-btn">Show older batches (' + olderCount + ')</button></div>' : '');
+  const moreBtn = document.getElementById('att-more-btn');
+  if(moreBtn) moreBtn.addEventListener('click', () => { admAttLimit += 5; renderAdminAttendance(); });
   holder.querySelectorAll('.hide-btn[data-hide]').forEach(btn => {
     btn.addEventListener('click', () => hideBatch(batches[parseInt(btn.getAttribute('data-hide'), 10)], btn, loadAdminAttendance));
   });
@@ -2434,7 +2445,7 @@ document.getElementById('am-options').addEventListener('click', async (e)=>{
   admAttBusy = false;
 });
 
-document.getElementById('att-f-sheet').addEventListener('change', (e)=>{ admAttFilter = e.target.value; loadAdminAttendance(); });
+document.getElementById('att-f-sheet').addEventListener('change', (e)=>{ admAttFilter = e.target.value; admAttLimit = 5; loadAdminAttendance(); });
 document.getElementById('att-reload-btn').addEventListener('click', ()=> loadAdminAttendance());
 document.getElementById('att-batches-btn').addEventListener('click', ()=> openHiddenBatches((admAttData && admAttData.batches) || [], loadAdminAttendance));
 
@@ -2461,7 +2472,7 @@ document.getElementById('refresh-btn').addEventListener('click', async ()=>{
 // Teams every 30s, Dashboard / Quality / Admin every 60s. It only runs while the
 // page is visible, you are logged in as admin, and the Teams card is NOT open
 // (so nothing you are typing gets overwritten).
-const AUTO_REFRESH_MS = { teams: 30000, attendance: 60000, dashboard: 60000, quality: 60000, admin: 60000 };
+const AUTO_REFRESH_MS = { teams: 60000, attendance: 120000, dashboard: 180000, quality: 180000, admin: 180000 };
 var autoLast = {};
 let autoBusy = false;
 

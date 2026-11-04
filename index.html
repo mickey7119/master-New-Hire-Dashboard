@@ -316,6 +316,33 @@
   .hb-row small{ display:block; color:var(--muted); font-weight:600; font-size:11.5px; margin-top:2px; }
   #hb-modal{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:16px; }
   #hb-modal.open{ display:flex; }
+  /* ===== Welcome screen (shown after you type a user name and press Sign in) ===== */
+  #welcome{ position:fixed; inset:0; z-index:10100; display:none; align-items:center; justify-content:center; padding:20px; overflow:auto;
+    background:linear-gradient(135deg,#000000 0%,#061a3d 48%,#0b4a94 100%); opacity:0; transition:opacity .45s ease; }
+  #welcome.open{ display:flex; }
+  #welcome.show{ opacity:1; }
+  .wl-card{ width:100%; max-width:420px; text-align:center; }
+  .wl-avatar{ position:relative; width:170px; height:170px; margin:20px auto 34px; }
+  .wl-avatar img, .wl-initials{ position:absolute; inset:0; width:100%; height:100%; border-radius:50%; object-fit:cover;
+    box-shadow:0 0 34px rgba(91,200,245,.6), 0 0 0 4px rgba(255,255,255,.16); }
+  .wl-initials{ display:none; align-items:center; justify-content:center; font-size:68px; font-weight:800; color:#fff; background:linear-gradient(135deg,#000,#0b4a94); }
+  .wl-ring{ position:absolute; inset:-20px; border-radius:50%; border:4px solid transparent; border-top-color:#5bc8f5; border-left-color:#ef7fb8; animation:wlSpin 7s linear infinite; }
+  .wl-ring.two{ inset:-11px; border-top-color:transparent; border-left-color:transparent; border-bottom-color:rgba(91,200,245,.6); border-right-color:rgba(239,127,184,.6);
+    animation-duration:11s; animation-direction:reverse; }
+  @keyframes wlSpin{ to{ transform:rotate(360deg); } }
+  .wl-name{ color:#fff; font-size:clamp(26px,8vw,40px); font-weight:800; letter-spacing:5px; text-shadow:0 2px 16px rgba(0,0,0,.5); word-break:break-word; }
+  .wl-title{ color:#5bc8f5; font-size:13px; font-weight:800; letter-spacing:7px; text-transform:uppercase; margin-top:10px; min-height:16px; }
+  #wl-login{ margin-top:30px; }
+  #wl-login input{ text-align:center; background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.25); color:#fff; font-size:16px; }
+  #wl-login .actions-row{ justify-content:center; }
+  #wl-login .btn.secondary{ color:#fff; border-color:rgba(255,255,255,.35); }
+  #wl-loading{ display:none; margin-top:34px; }
+  .wl-bar{ height:6px; width:min(260px,70%); margin:0 auto; background:rgba(255,255,255,.18); border-radius:6px; overflow:hidden; }
+  #wl-bar-fill{ height:100%; width:0; background:linear-gradient(90deg,#5bc8f5,#ef7fb8); border-radius:6px; transition:width 1.7s cubic-bezier(.25,.8,.3,1); }
+  .wl-loadtxt{ color:rgba(255,255,255,.75); font-size:12px; letter-spacing:4px; text-transform:uppercase; margin-top:12px; font-weight:700; }
+  #cf-modal{ position:fixed; inset:0; z-index:10050; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:16px; }
+  #cf-modal.open{ display:flex; }
+  #cf-text{ font-size:15px; font-weight:700; line-height:1.55; white-space:pre-line; text-align:center; margin:6px 0 4px; }
   #att-modal{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:16px; }
   #att-modal.open{ display:flex; }
 
@@ -328,6 +355,9 @@
     border:2px solid #5bc8f5; box-shadow:0 0 12px rgba(91,200,245,.55); }
   .pf-initials{ display:none; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#fff;
     background:linear-gradient(135deg,#000,#0b4a94); }
+  #pf-chip .pf-avatar{ transition:transform .28s cubic-bezier(.2,.8,.3,1); transform-origin:left center; z-index:30; cursor:zoom-in; }
+  #pf-chip .pf-avatar:hover, #pf-chip .pf-avatar.zoom{ transform:scale(2.7); }
+  #pf-chip{ position:relative; z-index:30; }
   .pf-text{ display:flex; flex-direction:column; line-height:1.25; min-width:0; }
   .pf-name{ font-size:15px; font-weight:800; color:var(--text); white-space:nowrap; }
   .pf-title{ font-size:13px; font-weight:800; color:#38bdf8; white-space:nowrap; }
@@ -777,6 +807,42 @@
 
 </div>
 
+<!-- ===================== WELCOME (profile + password + loading) ===================== -->
+<div id="welcome">
+  <div class="wl-card">
+    <div class="wl-avatar">
+      <div class="wl-ring"></div><div class="wl-ring two"></div>
+      <img id="wl-img" alt="" referrerpolicy="no-referrer" style="display:none">
+      <div class="wl-initials" id="wl-initials"></div>
+    </div>
+    <div class="wl-name" id="wl-name"></div>
+    <div class="wl-title" id="wl-title"></div>
+    <div id="wl-login">
+      <input id="wl-pass" type="password" placeholder="Password" autocomplete="current-password">
+      <div class="actions-row">
+        <button class="btn" id="wl-go">Login</button>
+        <button class="btn secondary" id="wl-cancel">Cancel</button>
+      </div>
+      <div id="wl-msg"></div>
+    </div>
+    <div id="wl-loading">
+      <div class="wl-bar"><div id="wl-bar-fill"></div></div>
+      <div class="wl-loadtxt">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CONFIRM / MESSAGE DIALOG (replaces the browser's confirm and alert) ===================== -->
+<div id="cf-modal">
+  <div class="tm-box" style="max-width:360px">
+    <div id="cf-text"></div>
+    <div class="actions-row" style="justify-content:center">
+      <button class="btn" id="cf-ok">OK</button>
+      <button class="btn secondary" id="cf-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== HIDDEN BATCHES LIST ===================== -->
 <div id="hb-modal">
   <div class="tm-box">
@@ -929,6 +995,28 @@ function runScript(fnName, ...args){
     throw new Error((j && j.error) || 'Request failed.');
   });
 }
+// In-page dialogs. askConfirm(text) -> true / false ; notify(text) -> shows a message.
+let cfResolve = null;
+function openDialog(text, withCancel, okLabel){
+  return new Promise(resolve => {
+    document.getElementById('cf-text').textContent = text;
+    document.getElementById('cf-cancel').style.display = withCancel ? '' : 'none';
+    document.getElementById('cf-ok').textContent = okLabel || 'OK';
+    cfResolve = resolve;
+    document.getElementById('cf-modal').classList.add('open');
+  });
+}
+function closeDialog(result){
+  document.getElementById('cf-modal').classList.remove('open');
+  const r = cfResolve; cfResolve = null;
+  if(r) r(result);
+}
+function askConfirm(text, okLabel){ return openDialog(text, true, okLabel); }
+function notify(text){ return openDialog(text, false, 'OK'); }
+document.getElementById('cf-ok').addEventListener('click', ()=> closeDialog(true));
+document.getElementById('cf-cancel').addEventListener('click', ()=> closeDialog(false));
+document.getElementById('cf-modal').addEventListener('click', (e)=>{ if(e.target.id === 'cf-modal') closeDialog(false); });
+
 function errText(e){ return (e && e.message) ? e.message : String(e); }
 
 // ---------------- Custom scrollbar engine (JS-driven, works on every device) ----------------
@@ -1183,11 +1271,7 @@ document.getElementById('ci-start-btn').addEventListener('click', async ()=>{
     const res = await runScript('checkIn', nid);
     if(res.success && res.needPassword){
       pendingAdminUser = nid;
-      document.getElementById('ci-pass-wrap').style.display = 'block';
-      document.getElementById('ci-pass').value = '';
-      document.getElementById('ci-pass').focus();
-      msgEl.innerHTML = '<div class="msg ok">Enter your password to continue.</div>';
-      updateCustomScrollbar(0);
+      showWelcome(res.profile || { name: nid, photo: '', title: '' });
     } else if(!res.success){
       msgEl.innerHTML = '<div class="msg err">' + escapeHtml(res.message) + '</div>';
     } else {
@@ -1220,6 +1304,70 @@ document.getElementById('ci-pass-cancel').addEventListener('click', ()=>{
 document.getElementById('ci-pass').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter') document.getElementById('ci-login-btn').click();
 });
+// ---- Welcome screen: photo + name (+ password), then a short loading, then the dashboard ----
+function showWelcome(profile){
+  const w = document.getElementById('welcome');
+  document.getElementById('wl-name').textContent = profile.name || '';
+  document.getElementById('wl-title').textContent = profile.title || '';
+  const img = document.getElementById('wl-img'), ini = document.getElementById('wl-initials');
+  ini.textContent = (profile.name || '?').trim().charAt(0).toUpperCase();
+  if(profile.photo){
+    ini.style.display = 'none'; img.style.display = 'block';
+    img.onerror = () => { img.style.display = 'none'; ini.style.display = 'flex'; };
+    img.src = profile.photo;
+  } else { img.style.display = 'none'; ini.style.display = 'flex'; }
+  document.getElementById('wl-login').style.display = 'block';
+  document.getElementById('wl-loading').style.display = 'none';
+  document.getElementById('wl-bar-fill').style.width = '0';
+  document.getElementById('wl-msg').innerHTML = '';
+  document.getElementById('wl-pass').value = '';
+  w.classList.add('open');
+  requestAnimationFrame(()=> requestAnimationFrame(()=> w.classList.add('show')));
+  setTimeout(()=> document.getElementById('wl-pass').focus(), 350);
+}
+function closeWelcome(){
+  const w = document.getElementById('welcome');
+  w.classList.remove('show');
+  setTimeout(()=> w.classList.remove('open'), 460);
+}
+document.getElementById('wl-cancel').addEventListener('click', ()=>{ pendingAdminUser = null; closeWelcome(); });
+document.getElementById('wl-pass').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') document.getElementById('wl-go').click(); });
+document.getElementById('wl-go').addEventListener('click', async ()=>{
+  if(!pendingAdminUser) return;
+  const msgEl = document.getElementById('wl-msg');
+  const pass = document.getElementById('wl-pass').value;
+  if(!pass){ msgEl.innerHTML = '<div class="msg err">Please enter your password.</div>'; return; }
+  const btn = document.getElementById('wl-go');
+  btn.disabled = true; btn.textContent = '...';
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminLogin', pendingAdminUser, pass);
+    if(res && res.success){
+      saveAdminToken(res.token);
+      userIsAdmin = true;
+      adminInfo = { user: res.user, all: !!res.all, shifts: res.shifts || [], photo: res.photo || '', title: res.title || '' };
+      document.getElementById('ci-nid').value = '';
+      document.getElementById('ci-msg').innerHTML = '';
+      hideAdminPassBox();
+      // the page behind loads while the bar fills, then the welcome screen fades out
+      document.getElementById('wl-login').style.display = 'none';
+      document.getElementById('wl-loading').style.display = 'block';
+      requestAnimationFrame(()=> requestAnimationFrame(()=>{ document.getElementById('wl-bar-fill').style.width = '100%'; }));
+      applyAdminUi();
+      if(adminInfo.all) loadAdminTable();
+      setTimeout(closeWelcome, 1900);
+    } else {
+      msgEl.innerHTML = '<div class="msg err">' + escapeHtml((res && res.message) || 'Login failed.') + '</div>';
+    }
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Login';
+});
+
+// tap the small photo in the header (phones): zoom / unzoom, same as hovering with a mouse
+document.querySelector('#pf-chip .pf-avatar').addEventListener('click', (e)=> e.currentTarget.classList.toggle('zoom'));
+
 document.getElementById('ci-login-btn').addEventListener('click', async ()=>{
   if(!pendingAdminUser) return;
   const msgEl = document.getElementById('ci-msg');
@@ -1415,8 +1563,8 @@ function renderDynamicStages(){
     try{
       const res = await runScript('setMyStage', currentNationalId, id, finish);
       if(res && res.success){ stDynamic = res.stages; renderDynamicStages(); }
-      else alert((res && res.message) || 'Something went wrong.');
-    }catch(e){ alert('Error: ' + errText(e)); }
+      else notify((res && res.message) || 'Something went wrong.');
+    }catch(e){ notify('Error: ' + errText(e)); }
   };
   holder.querySelectorAll('.stage-opt').forEach(opt => {
     opt.addEventListener('click', async () => {
@@ -1501,9 +1649,9 @@ function renderStagePicker(){
             stCurrentPerson.stage = stageId;
             renderStagePicker();
           } else {
-            alert(res.message || 'Something went wrong.');
+            notify(res.message || 'Something went wrong.');
           }
-        }catch(e){ alert('Error: ' + errText(e)); }
+        }catch(e){ notify('Error: ' + errText(e)); }
       }
     });
   });
@@ -1551,7 +1699,7 @@ document.getElementById('a-sync-btn').addEventListener('click', async ()=>{
 });
 
 document.getElementById('a-arrange-btn').addEventListener('click', async ()=>{
-  if(!confirm('Sort every shift tab by Join Date and put a black row between the dates?\nTrainee rows are kept; the black rows made by the app are rebuilt. Best done when nobody is signing up.')) return;
+  if(!(await askConfirm('Sort every shift tab by Join Date and put a black row between the dates?\nTrainee rows are kept; the black rows made by the app are rebuilt. Best done when nobody is signing up.'))) return;
   const btn = document.getElementById('a-arrange-btn');
   const msgEl = document.getElementById('a-arrange-msg');
   btn.disabled = true; btn.textContent = 'Arranging…';
@@ -1605,9 +1753,9 @@ async function loadAdminTable(){
       <tbody>${rows}</tbody></table>`;
     holder.querySelectorAll('.del-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        if(!confirm('Reset this trainee\'s tracker data (stage and check-ins)? Their row in the shift tab is not touched.')) return;
+        if(!(await askConfirm('Reset this trainee\'s tracker data (stage and check-ins)? Their row in the shift tab is not touched.'))) return;
         try{ await runScript('adminDeletePerson', btn.getAttribute('data-nid')); loadAdminTable(); }
-        catch(e){ alert('Error: ' + errText(e)); }
+        catch(e){ notify('Error: ' + errText(e)); }
       });
     });
   }catch(e){
@@ -1993,13 +2141,13 @@ async function loadTeams(silent){
 // ---- hide a finished batch / bring it back (shared by Teams and Attendance) ----
 async function hideBatch(batch, btn, reload){
   if(!batch || !(batch.sheet || batch.buffer)) return;
-  if(!confirm('Hide this batch?\nIts trainees and its attendance disappear from Teams and Attendance. Nothing is deleted; open "Batches" to show it again.')) return;
+  if(!(await askConfirm('Hide this batch?\nIts trainees and its attendance disappear from Teams and Attendance. Nothing is deleted; open "Batches" to show it again.'))) return;
   btn.disabled = true;
   try{
     if(batch.buffer) await runScript('adminHideBufferBatch', batch.name, true);
     else await runScript('adminHideBatch', batch.sheet, batch.dateKey || batch.key, true);
     await reload();
-  }catch(e){ alert('Error: ' + errText(e)); btn.disabled = false; }
+  }catch(e){ notify('Error: ' + errText(e)); btn.disabled = false; }
 }
 let hbReload = null;
 function openHiddenBatches(batches, reload){
@@ -2157,7 +2305,7 @@ function closeTeamModal(){ document.getElementById('team-modal').classList.remov
 document.getElementById('tm-hide-person').addEventListener('click', async ()=>{
   const p = teamsPeopleMap[teamsCurrentKey];
   if(!p || !p.owner) return;
-  if(!confirm('Hide ' + (p.name || p.nationalId) + ' from ' + p.owner + '?\nHe disappears from this batch (nothing is deleted). When the last one is hidden, the batch goes to Batches.')) return;
+  if(!(await askConfirm('Hide ' + (p.name || p.nationalId) + ' from ' + p.owner + '?\nHe disappears from this batch (nothing is deleted). When the last one is hidden, the batch goes to Batches.'))) return;
   const btn = document.getElementById('tm-hide-person');
   const msgEl = document.getElementById('tm-msg');
   btn.disabled = true;

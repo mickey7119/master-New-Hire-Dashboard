@@ -398,7 +398,7 @@
     transition:top .05s linear;
   }
 
-  /* ===== Splash Screen: "meeg" rising out of glowing water (water line = mid-screen) ===== */
+  /* ===== Splash Screen: "Meeg" rising out of glowing water (water line = mid-screen) ===== */
   body.has-splash{ overflow:hidden; }
   #splash{
     position:fixed; inset:0; z-index:9999;
@@ -467,14 +467,14 @@
 <div id="splash">
   <div class="splash-glow"></div>
   <div class="splash-text-wrap">
-    <div class="splash-text">meeg</div>
+    <div class="splash-text">Meeg</div>
   </div>
   <div class="splash-skip">Tap to skip</div>
 </div>
 
 <div class="wrap">
   <header>
-    <h1> Portal</h1>
+    <h1> Dashboard</h1>
     <div class="header-right">
       <div id="pf-chip">
         <div class="pf-avatar">
@@ -972,8 +972,8 @@ const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
 // ===== Hosting =====
 // Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
 // Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
-const API_URL = 'https://script.google.com/macros/s/AKfycbwWd85TrsuWTM8Lqc35jXwSD_6fKD2777OqLEDiz427xKO7f4utcipa9pwkgSlDRv8r5Q/exec';
-  const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
+const API_URL = 'https://script.google.com/macros/s/AKfycbyP4k36ijJNSd_OvyvJzbRvdZc_yyLQxnJnxw2HDm4XDs-iZepP8B0mVTJSVeIKcLYTUw/exec';
+const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
 function runScript(fnName, ...args){
   if(ADMIN_FNS.indexOf(fnName) !== -1) args.push(adminToken); // token is always the LAST argument

@@ -474,7 +474,7 @@
 
 <div class="wrap">
   <header>
-    <h1> Dashboard</h1>
+    <h1> Dashboard </h1>
     <div class="header-right">
       <div id="pf-chip">
         <div class="pf-avatar">
@@ -972,7 +972,7 @@ const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
 // ===== Hosting =====
 // Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
 // Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
-const API_URL = 'https://script.google.com/macros/s/AKfycbw1Ur8E0CYn85d0HMAj0CKMniQh2losz27dOcOhb3nW5PADcGY1myZTx2M3k5Q2SUiMMA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzryQELvV0zXtWKOoSjyf-WzwMXcwX5VWw-RkVan5aswakHnWGIvG1E7UFPHOuOsZol/exec';
 const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
 function runScript(fnName, ...args){
@@ -1121,8 +1121,10 @@ function applyAdminUi(){
   // the Admin tab (sign-ups, nightly check, arrange tabs) is for SV only; shift users get the other tabs
   const isSV = !!(userIsAdmin && adminInfo && adminInfo.all);
   document.getElementById('admin-tab-btn').style.display = isSV ? 'inline-block' : 'none';
-  document.getElementById('dashboard-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
-  document.getElementById('quality-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
+  // Dashboard and Quality: the OWNER (OWNER_USERS in Code.gs) only
+  const isOwner = !!(userIsAdmin && adminInfo && adminInfo.owner);
+  document.getElementById('dashboard-tab-btn').style.display = isOwner ? 'inline-block' : 'none';
+  document.getElementById('quality-tab-btn').style.display = isOwner ? 'inline-block' : 'none';
   document.getElementById('teams-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
   document.getElementById('attendance-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
   document.getElementById('logout-btn').style.display = userIsAdmin ? 'inline-flex' : 'none';
@@ -1130,6 +1132,8 @@ function applyAdminUi(){
   if(!userIsAdmin && activeTab && activeTab.tab !== 'carousel'){
     switchTab('carousel');
   } else if(userIsAdmin && !isSV && activeTab && activeTab.tab === 'admin'){
+    switchTab('teams');
+  } else if(userIsAdmin && !isOwner && activeTab && (activeTab.tab === 'dashboard' || activeTab.tab === 'quality')){
     switchTab('teams');
   }
 }
@@ -1345,7 +1349,7 @@ document.getElementById('wl-go').addEventListener('click', async ()=>{
     if(res && res.success){
       saveAdminToken(res.token);
       userIsAdmin = true;
-      adminInfo = { user: res.user, all: !!res.all, shifts: res.shifts || [], photo: res.photo || '', title: res.title || '' };
+      adminInfo = { user: res.user, all: !!res.all, owner: !!res.owner, shifts: res.shifts || [], photo: res.photo || '', title: res.title || '' };
       document.getElementById('ci-nid').value = '';
       document.getElementById('ci-msg').innerHTML = '';
       hideAdminPassBox();
@@ -1380,7 +1384,7 @@ document.getElementById('ci-login-btn').addEventListener('click', async ()=>{
     if(res && res.success){
       saveAdminToken(res.token);
       userIsAdmin = true;
-      adminInfo = { user: res.user, all: !!res.all, shifts: res.shifts || [], photo: res.photo || '', title: res.title || '' };
+      adminInfo = { user: res.user, all: !!res.all, owner: !!res.owner, shifts: res.shifts || [], photo: res.photo || '', title: res.title || '' };
       applyAdminUi();
       if(adminInfo.all) loadAdminTable();
       document.getElementById('ci-nid').value = '';

@@ -4,7 +4,7 @@
 <base target="_top">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MICKEY</title>
+<title>Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -467,14 +467,14 @@
 <div id="splash">
   <div class="splash-glow"></div>
   <div class="splash-text-wrap">
-    <div class="splash-text">Meeg</div>
+    <div class="splash-text">meeg</div>
   </div>
   <div class="splash-skip">Tap to skip</div>
 </div>
 
 <div class="wrap">
   <header>
-    <h1> Dashboard </h1>
+    <h1> Portal</h1>
     <div class="header-right">
       <div id="pf-chip">
         <div class="pf-avatar">
@@ -750,7 +750,7 @@
       </div>
       <p style="font-size:12.5px;color:var(--muted);margin:0">
         Day 1 = the join date. A check-in on day 1 / 2 / 3 = <b>T1 / T2 / T3</b>, later days = <b>TP</b>; <b>0</b> = missed.
-        Two 0 in a row before T3 = red row + Dropped out. Tap any cell to set it by hand.
+        Absent (0) on 2 days or more inside the first 4 days = red row + Dropped out (with the note "Absent 2 Days"). Tap any cell to set it by hand.
       </p>
       <div id="att-admin-msg"></div>
     </div>
@@ -785,7 +785,7 @@
       <h2>Attendance &amp; shift tabs</h2>
       <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">
         Attendance is computed inside the dashboard (see the Attendance tab), there is no Attend sheet.
-        <b>Check dropouts</b> re-checks everybody and writes "Dropped out" where two 0 in a row came before T3.
+        <b>Check dropouts</b> re-checks everybody and writes "Dropped out" (note "Absent 2 Days") for anyone absent on 2 days or more inside the first 4 days. Later absences are not counted.
         <b>Arrange shift tabs</b> sorts each tab by Join Date and puts a black row between the dates.
       </p>
       <div class="actions-row"><button class="btn secondary" id="a-sync-btn">Check dropouts now</button></div>
@@ -972,7 +972,7 @@ const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
 // ===== Hosting =====
 // Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
 // Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
-const API_URL = 'https://script.google.com/macros/s/AKfycbzryQELvV0zXtWKOoSjyf-WzwMXcwX5VWw-RkVan5aswakHnWGIvG1E7UFPHOuOsZol/exec';
+const API_URL = https://script.google.com/macros/s/AKfycbyFiz6ZSIGYd-3VvjvauEySUfoIhWMMyX5Xx_ndhg4e1NiHrwAYYgFt90-FgmyLpgiaDg/exec;
 const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
 function runScript(fnName, ...args){
@@ -1206,6 +1206,8 @@ function collapseAllCards(){
   document.getElementById('carousel').classList.remove('has-expanded');
 }
 function expandCard(idx){
+  if(idx === 1 && attPending){ attPending = false; loadAttendance(); }
+  if(idx === 2 && stagePending){ stagePending = false; loadStagePage(); }
   collapseAllCards();
   const slide = document.querySelector('.carousel-slide[data-slide="'+idx+'"]');
   if(slide){
@@ -1261,6 +1263,7 @@ updateCarousel();
 // ---------------- Shared National ID (typed once, used by all 3 cards) ----------------
 const LAST_NID_KEY = 'tracker_last_nid';
 let currentNationalId = null;
+let attPending = false, stagePending = false;   // Attendance / My Stage load when the card is opened
 
 document.getElementById('ci-start-btn').addEventListener('click', async ()=>{
   const nid = document.getElementById('ci-nid').value.trim();
@@ -1284,8 +1287,8 @@ document.getElementById('ci-start-btn').addEventListener('click', async ()=>{
       try{ localStorage.setItem(LAST_NID_KEY, nid); }catch(e){}
       showCheckinCard(res.person);
       unlockOtherCards();
-      loadAttendance();   // preload silently so slide 2 is ready instantly
-      loadStagePage();    // preload silently so slide 3 is ready instantly
+      // not loaded now: the card shows at once, and these two load only when you open them
+      attPending = true; stagePending = true;
     }
   }catch(e){
     msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
@@ -1358,7 +1361,6 @@ document.getElementById('wl-go').addEventListener('click', async ()=>{
       document.getElementById('wl-loading').style.display = 'block';
       requestAnimationFrame(()=> requestAnimationFrame(()=>{ document.getElementById('wl-bar-fill').style.width = '100%'; }));
       applyAdminUi();
-      if(adminInfo.all) loadAdminTable();
       setTimeout(closeWelcome, 1900);
     } else {
       msgEl.innerHTML = '<div class="msg err">' + escapeHtml((res && res.message) || 'Login failed.') + '</div>';
@@ -1386,7 +1388,6 @@ document.getElementById('ci-login-btn').addEventListener('click', async ()=>{
       userIsAdmin = true;
       adminInfo = { user: res.user, all: !!res.all, owner: !!res.owner, shifts: res.shifts || [], photo: res.photo || '', title: res.title || '' };
       applyAdminUi();
-      if(adminInfo.all) loadAdminTable();
       document.getElementById('ci-nid').value = '';
       hideAdminPassBox();
       msgEl.innerHTML = '<div class="msg ok">Admin unlocked ✓</div>';
@@ -2339,11 +2340,14 @@ document.getElementById('tm-save').addEventListener('click', async ()=>{
   btn.disabled = true; btn.textContent = 'Saving…';
   msgEl.innerHTML = '';
   try{
-    const saved = await runScript('adminSaveComment', p.batch, p.rowNum, tmComments, ratingsOut, tmFeedback, tmTrainers);
+    const oldFb = p.feedback || '';
+    const saved = await runScript('adminSaveComment', p.batch, p.rowNum, tmComments, ratingsOut, tmFeedback, tmTrainers, p.nationalId);
+    if(saved && saved.row) p.rowNum = saved.row; // the row it was really written on
     p.comments = tmComments.slice(); p.ratings = ratingsOut; p.feedback = tmFeedback; p.trainers = tmTrainers.slice();
-    var extraNote = (saved && saved.copiedTo) ? ' · row copied to ' + saved.copiedTo : ((saved && saved.alreadyThere) ? ' · already in youssef saper' : '');
+    var extraNote = (saved && saved.tab) ? ' · ' + saved.tab + ', row ' + saved.row + (saved.state ? ', State: ' + saved.state : '') : '';
     renderTeams(); // update the ! badge on the tiles
-    loadTeams(true); // Pass moves the trainee to the buffer batch, P removes him: re-read the batches
+    // only Pass / P move a trainee between batches: reload the batches just then (a full reload is slow)
+    if(['Pass','P'].indexOf(oldFb) !== -1 || ['Pass','P'].indexOf(tmFeedback) !== -1) loadTeams(true);
     msgEl.innerHTML = '<div class="msg ok">Saved ✓' + extraNote + '</div>';
   }catch(e){
     msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';

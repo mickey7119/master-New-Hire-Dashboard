@@ -4,7 +4,7 @@
 <base target="_top">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tracker</title>
+<title>MICKEY</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -293,6 +293,22 @@
   .stage-bar{ height:5px; background:var(--line); border-radius:4px; overflow:hidden; margin-top:8px; }
   .stage-bar > div{ height:100%; background:var(--amber); border-radius:4px; }
 
+  /* ===== Users tab (owner only) ===== */
+  .usr-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  .usr-table{ border-collapse:collapse; width:100%; min-width:640px; }
+  .usr-table th{ background:#1c4587; color:#fff; text-align:center; font-size:13px; padding:10px 8px; border:1px solid var(--line); }
+  .usr-table td{ padding:0; border:1px solid var(--line); }
+  .usr-table td input{ border:none; border-radius:0; background:transparent; text-align:center; font-weight:700; font-size:13px; padding:9px 8px; }
+  .usr-table td input:focus{ background:var(--panel-2); }
+  .usr-table tr.sec td{ background:#000; }
+  .usr-table tr.sec td input{ color:#fff; font-weight:800; }
+  .usr-table td.act{ white-space:nowrap; text-align:center; width:132px; padding:0 4px; }
+  .usr-table tr.sec td.act{ background:#000; }
+  .usr-btn{ background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:6px 5px; font-family:inherit; font-weight:800; }
+  .usr-btn:hover{ color:var(--amber); }
+  .usr-btn.del:hover{ color:var(--danger); }
+  .usr-hint{ font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.6; }
+
   /* ===== Attendance tab ===== */
   .att-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
   .att-table{ border-collapse:separate; border-spacing:0; min-width:100%; }
@@ -465,14 +481,14 @@
 <div id="splash">
   <div class="splash-glow"></div>
   <div class="splash-text-wrap">
-    <div class="splash-text">meeg</div>
+    <div class="splash-text">Meeg</div>
   </div>
   <div class="splash-skip">Tap to skip</div>
 </div>
 
 <div class="wrap">
   <header>
-    <h1> Portal</h1>
+    <h1> Dashboard</h1>
     <div class="header-right">
       <div id="pf-chip">
         <div class="pf-avatar">
@@ -493,6 +509,7 @@
     <button class="tab-btn" data-tab="quality" id="quality-tab-btn" style="display:none">✅ Quality</button>
     <button class="tab-btn" data-tab="teams" id="teams-tab-btn" style="display:none">👥 Teams</button>
     <button class="tab-btn" data-tab="attendance" id="attendance-tab-btn" style="display:none">📅 Attendance</button>
+    <button class="tab-btn" data-tab="users" id="users-tab-btn" style="display:none">👤 Users</button>
     <button class="tab-btn" data-tab="admin" id="admin-tab-btn" style="display:none">🛠 Admin</button>
   </div>
 
@@ -755,6 +772,25 @@
     <div id="att-admin-holder"><div class="empty">Loading…</div></div>
   </div>
 
+  <!-- ===================== USERS (owner only) ===================== -->
+  <div id="tab-users" style="display:none">
+    <div class="panel">
+      <h2>Users</h2>
+      <p class="usr-hint">
+        A <b>black row</b> is a section: <b>SV</b> = every shift, <b>OverNight-users / Night-users / Morning-users</b> = that shift only.
+        Add <b>(buffer)</b> to a section name (e.g. <i>OverNight-users (buffer)</i>) and its users get their own buffer batch.
+        The photo is a Google Drive share link. Press <b>Save</b> when you finish.
+      </p>
+      <div id="users-holder"><div class="empty">Loading…</div></div>
+      <div class="actions-row">
+        <button class="btn secondary" id="usr-add-user">➕ Add user</button>
+        <button class="btn secondary" id="usr-add-section">➕ Add section</button>
+        <button class="btn" id="usr-save">Save</button>
+      </div>
+      <div id="users-msg"></div>
+    </div>
+  </div>
+
   <div id="tab-teams" style="display:none">
     <div id="teams-holder"><div class="empty">Loading…</div></div>
     <div id="teams-msg"></div>
@@ -920,9 +956,9 @@ const STAGES = [
   {id:'p1_video', label:'Video Phase One', phase:'phase1'},
   {id:'p1_vehicle', label:'Vehicle', phase:'phase1', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/vehicles?pli=1&authuser=0'},
   {id:'p1_motorcycle', label:'Motorcycle', phase:'phase1', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/personal-vehicle/motorcycle'},
-  {id:'p1_task9106', label:'Task Day 1 (9106)', phase:'phase1'},
-  {id:'p1_task9661', label:'Task Day 1 (9661)', phase:'phase1'},
-  {id:'p1_task3200', label:'Task Day 1 (3200)', phase:'phase1'},
+  {id:'p1_task9106', label:'Task Day 1 (9106)', phase:'phase1', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/164979106/frame/1'},
+  {id:'p1_task9661', label:'Task Day 1 (9661)', phase:'phase1', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/169679661/frame/1'},
+  {id:'p1_task3200', label:'Task Day 1 (3200)', phase:'phase1', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/164963200/frame/1'},
   // ---- Phase 2 ----
   {id:'p2_video', label:'Video Phase Two', phase:'phase2'},
   {id:'p2_signs', label:'Signs', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/inanimate-objects/signs'},
@@ -932,17 +968,19 @@ const STAGES = [
   {id:'p2_barrier', label:'Barrier', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/inanimate-objects/barrier'},
   {id:'p2_vegetation', label:'Vegetation', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/shapeless-objects/vegetation'},
   {id:'p2_vapor', label:'Vapor', phase:'phase2', link:'https://sites.google.com/meti.ai/training-material/home/unified-taxonomy/shapeless-objects/vapor'},
-  {id:'p2_task5747', label:'Task Day 2 (5747)', phase:'phase2'},
-  {id:'p2_task6464', label:'Task Day 2 (6464)', phase:'phase2'},
-  {id:'p2_task6470', label:'Task Day 2 (6470)', phase:'phase2'},
+  {id:'p2_task5747', label:'Task Day 2 (5747)', phase:'phase2', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/167125747/frame/1'},
+  {id:'p2_task6464', label:'Task Day 2 (6464)', phase:'phase2', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/167126464/frame/1'},
+  {id:'p2_task6470', label:'Task Day 2 (6470)', phase:'phase2', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/167126470/frame/1'},
   // ---- Phase 3 ----
   {id:'p3_video', label:'Video Phase Three', phase:'phase3'},
   {id:'p3_qaerrors', label:'Auto QA Errors', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/welcome-to-meti/practicing/auto-qa-errors'},
   {id:'p3_mapless', label:'Mapless', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/current-queue/sc3-full-scene-lidar'},
   {id:'p3_signals', label:'Signals', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/sc3-full-scene-new-version/vehicle-signals-labeling'},
   {id:'p3_roadsign', label:'Road Sign', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/sc3-full-scene-new-version/road-sign-labeling'},
-  {id:'p3_nlz', label:'NLZ Labeling', phase:'phase3', link:'https://sites.google.com/meti.ai/training-material/home/queues/sc3-full-scene-2-1-versioning/nlz-labeling'},
-  {id:'p3_task7362', label:'Task Day 3 (7362)', phase:'phase3'},
+  {id:'p3_nlz', label:'NLZ Labeling', phase:'phase3', extra:true, link:'https://sites.google.com/meti.ai/training-material/home/queues/sc3-full-scene-2-1-versioning/nlz-labeling?authuser=0'},
+  {id:'p3_task7362', label:'Task Day 3 (7362)', phase:'phase3', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/1460967362/frame/1'},
+  {id:'p3_task7356', label:'Task Day 3 (7356)', phase:'phase3', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/1460967356/frame/1'},
+  {id:'p3_task7357', label:'Task Day 3 (7357)', phase:'phase3', extra:true, link:'https://labeling.robot.car/#/tasks/do/SellIvandar2D/id/1460967357/frame/1'},
 ];
 const PHASE_LABELS = {phase1:'Phase 1', phase2:'Phase 2', phase3:'Phase 3'};
 const ROOMS = {'106':'106','102':'102','108':'108','sf':'SF'};
@@ -965,12 +1003,13 @@ function saveAdminToken(t){
 const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
   'adminAddPerson','adminGetAllPeople','adminDeletePerson','adminGetTeams','adminSaveComment',
   'getDashboardData','getQualityData','adminSetupDailyTrigger','adminArrangeShiftSheets',
-  'adminGetAttendance','adminSetAttendance','adminHideBatch','adminHideBufferBatch','adminHideBufferPerson'];
+  'adminGetAttendance','adminSetAttendance','adminHideBatch','adminHideBufferBatch','adminHideBufferPerson',
+  'adminGetUsers','adminSaveUsers'];
 
 // ===== Hosting =====
 // Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
 // Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
-const API_URL = 'https://script.google.com/macros/s/AKfycbzYaIFWw2q69cOZzXCueB0PENtxWtK_OzCm2phER9pGI1s0l4U858vBOJnKcCOB_Yl3Gw/exec';
+const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
 const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
 function runScript(fnName, ...args){
@@ -1125,13 +1164,14 @@ function applyAdminUi(){
   document.getElementById('quality-tab-btn').style.display = isOwner ? 'inline-block' : 'none';
   document.getElementById('teams-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
   document.getElementById('attendance-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
+  document.getElementById('users-tab-btn').style.display = isOwner ? 'inline-block' : 'none';
   document.getElementById('logout-btn').style.display = userIsAdmin ? 'inline-flex' : 'none';
   const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset;
   if(!userIsAdmin && activeTab && activeTab.tab !== 'carousel'){
     switchTab('carousel');
   } else if(userIsAdmin && !isSV && activeTab && activeTab.tab === 'admin'){
     switchTab('teams');
-  } else if(userIsAdmin && !isOwner && activeTab && (activeTab.tab === 'dashboard' || activeTab.tab === 'quality')){
+  } else if(userIsAdmin && !isOwner && activeTab && (activeTab.tab === 'dashboard' || activeTab.tab === 'quality' || activeTab.tab === 'users')){
     switchTab('teams');
   }
 }
@@ -1167,7 +1207,7 @@ function renderProfile(){
 // ---------------- Tabs (Carousel vs Dashboard vs Quality vs Teams vs Admin) ----------------
 function switchTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab')===tab));
-  ['carousel','dashboard','quality','teams','attendance','admin'].forEach(t=>{
+  ['carousel','dashboard','quality','teams','attendance','users','admin'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = (t===tab) ? 'block' : 'none';
   });
   if(tab==='admin') loadAdminTable();
@@ -1175,6 +1215,7 @@ function switchTab(tab){
   if(tab==='quality') loadQuality();
   if(tab==='teams') loadTeams();
   if(tab==='attendance') loadAdminAttendance();
+  if(tab==='users') loadUsers();
   autoLast[tab] = Date.now();
 }
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1533,6 +1574,40 @@ function renderCalendar(res){
 // ---------------- SLIDE 3: Stage picker (uses currentNationalId) ----------------
 let stCurrentPerson = null;
 let stDynamic = null;   // stage list read from the sheet (checkbox columns), null = built-in list
+let stExtraDone = [];   // ids of dashboard-only stages (not in the sheet) the trainee finished
+
+function normKey_(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+// does a built-in stage correspond to a column of the sheet?  (tasks: by number; others: by name)
+function stageMatches_(b, label){
+  const m = /\((\d+)\)/.exec(b.label);
+  if(m) return String(label).indexOf(m[1]) !== -1;
+  const a = normKey_(b.label), c = normKey_(label);
+  return !!a && !!c && (a === c || c.indexOf(a) !== -1 || a.indexOf(c) !== -1);
+}
+// sheet stages + the built-in "extra" stages (tasks / NLZ) that are NOT in the sheet: these live in the dashboard only
+function mergedStages(){
+  const list = (stDynamic || []).map(s => Object.assign({}, s));
+  STAGES.forEach((b, bi) => {
+    if(!b.extra) return;
+    const phaseLabel = PHASE_LABELS[b.phase];
+    if(list.some(s => stageMatches_(b, s.label))) return; // it exists in the sheet: use the sheet
+    const item = { id:'x:' + b.id, bid:b.id, label:b.label, phase:phaseLabel, link:b.link || '', done:stExtraDone.indexOf(b.id) !== -1, current:false, local:true };
+    let pos = -1;
+    for(let k = bi - 1; k >= 0 && STAGES[k].phase === b.phase; k--){
+      const idx = list.findIndex(s => s.phase === phaseLabel && (s.local ? s.bid === STAGES[k].id : stageMatches_(STAGES[k], s.label)));
+      if(idx !== -1){ pos = idx + 1; break; }
+    }
+    if(pos === -1){
+      let last = -1; list.forEach((s, i) => { if(s.phase === phaseLabel) last = i; });
+      pos = last === -1 ? list.length : last + 1;
+    }
+    list.splice(pos, 0, item);
+  });
+  list.forEach(s => { s.current = false; });
+  const open = list.findIndex(s => !s.done);
+  if(open !== -1) list[open].current = true;
+  return list;
+}
 
 function phaseClass(ph){
   const m = /(\d+)/.exec(ph || '');
@@ -1540,7 +1615,7 @@ function phaseClass(ph){
 }
 
 function renderDynamicStages(){
-  const list = stDynamic || [];
+  const list = mergedStages();
   const order = [], groups = {};
   list.forEach(s => { if(!groups[s.phase]){ groups[s.phase] = []; order.push(s.phase); } groups[s.phase].push(s); });
   const cur = list.find(s => s.current);
@@ -1562,24 +1637,35 @@ function renderDynamicStages(){
     blocks;
   updateCustomScrollbar(2);
 
-  const apply = async (id, finish) => {
+  const apply = async (s, finish) => {
     try{
-      const res = await runScript('setMyStage', currentNationalId, id, finish);
-      if(res && res.success){ stDynamic = res.stages; renderDynamicStages(); }
-      else notify((res && res.message) || 'Something went wrong.');
+      const idx = list.findIndex(x => x.id === s.id);
+      const last = finish ? idx : idx - 1;
+      const localIds = list.slice(0, last + 1).filter(x => x.local && !x.done).map(x => x.bid);
+      if(localIds.length){ // dashboard-only stages (saved in the dashboard, not in the sheet)
+        const r1 = await runScript('markExtraStages', currentNationalId, localIds);
+        if(r1 && r1.success) stExtraDone = r1.extraDone || [];
+        else { notify((r1 && r1.message) || 'Something went wrong.'); return; }
+      }
+      if(!s.local){ // a stage that is a checkbox column of the sheet
+        const res = await runScript('setMyStage', currentNationalId, s.id, finish);
+        if(res && res.success) stDynamic = res.stages;
+        else { notify((res && res.message) || 'Something went wrong.'); return; }
+      }
+      renderDynamicStages();
     }catch(e){ notify('Error: ' + errText(e)); }
   };
   holder.querySelectorAll('.stage-opt').forEach(opt => {
     opt.addEventListener('click', async () => {
       const id = opt.getAttribute('data-id');
-      const s = (stDynamic || []).find(x => x.id === id);
-      // tapping a stage ticks every box before it in the sheet
+      const s = list.find(x => x.id === id);
+      // tapping a stage ticks every box before it (in the sheet, and the dashboard-only stages)
       if(s && s.link) window.open(s.link, '_blank');
-      if(s && !s.done && !s.current) await apply(id, false);
+      if(s && !s.done && !s.current) await apply(s, false);
     });
   });
   const fin = document.getElementById('st-finish-btn');
-  if(fin && cur) fin.addEventListener('click', () => apply(cur.id, true));
+  if(fin && cur) fin.addEventListener('click', () => apply(cur, true));
 }
 
 async function loadStagePage(){
@@ -1599,6 +1685,7 @@ async function loadStagePage(){
     try{ dyn = await runScript('getMyStages', currentNationalId); }catch(e){}
     if(dyn && dyn.success && dyn.source === 'sheet' && dyn.stages && dyn.stages.length){
       stDynamic = dyn.stages;
+      stExtraDone = dyn.extraDone || [];
       renderDynamicStages();
     } else {
       stDynamic = null;
@@ -2455,6 +2542,80 @@ document.getElementById('att-f-sheet').addEventListener('change', (e)=>{ admAttF
 document.getElementById('att-reload-btn').addEventListener('click', ()=> loadAdminAttendance());
 document.getElementById('att-batches-btn').addEventListener('click', ()=> openHiddenBatches((admAttData && admAttData.batches) || [], loadAdminAttendance));
 
+// ---------------- USERS TAB (owner only) ----------------
+// The logins live here (no "users" sheet any more). Black rows = sections, same as before.
+let usersRows = [];   // [{ section, name, password, photo, title }]
+const escAttr_ = s => escapeHtml(s).replace(/"/g, '&quot;');
+
+async function loadUsers(){
+  const holder = document.getElementById('users-holder');
+  const msgEl = document.getElementById('users-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminGetUsers');
+    usersRows = (res.rows || []).map(r => ({ section: !!r.section, name: r.name || '', password: r.password || '', photo: r.photo || '', title: r.title || '' }));
+    renderUsers();
+  }catch(e){
+    holder.innerHTML = '';
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+
+function renderUsers(){
+  const holder = document.getElementById('users-holder');
+  const inp = (i, f, v, ph) => '<input data-i="' + i + '" data-f="' + f + '" value="' + escAttr_(v) + '" placeholder="' + ph + '" autocomplete="off">';
+  const last = usersRows.length - 1;
+  const arrows = i => '<button class="usr-btn" data-act="up" data-i="' + i + '"' + (i === 0 ? ' disabled style="opacity:.3"' : '') + '>▲</button>' +
+                      '<button class="usr-btn" data-act="down" data-i="' + i + '"' + (i === last ? ' disabled style="opacity:.3"' : '') + '>▼</button>';
+  const rows = usersRows.map((r, i) => r.section
+    ? '<tr class="sec"><td colspan="4">' + inp(i, 'name', r.name, 'Section name') + '</td><td class="act">' +
+        '<button class="usr-btn" data-act="addin" data-i="' + i + '" title="Add a user in this section" style="color:#fff">＋</button>' + arrows(i) +
+        '<button class="usr-btn del" data-act="del" data-i="' + i + '">✕</button></td></tr>'
+    : '<tr><td>' + inp(i, 'name', r.name, 'User name') + '</td><td>' + inp(i, 'password', r.password, 'Password') + '</td><td>' +
+        inp(i, 'photo', r.photo, 'Photo link (optional)') + '</td><td>' + inp(i, 'title', r.title, 'Title (optional)') + '</td><td class="act">' +
+        arrows(i) + '<button class="usr-btn del" data-act="del" data-i="' + i + '">✕</button></td></tr>'
+  ).join('');
+  holder.innerHTML = '<div class="usr-wrap"><table class="usr-table"><thead><tr><th>users</th><th>password</th><th>photo</th><th>title</th><th></th></tr></thead><tbody>' +
+    (rows || '<tr><td colspan="5" class="empty">No users.</td></tr>') + '</tbody></table></div>';
+}
+
+document.getElementById('users-holder').addEventListener('input', (e)=>{
+  const el = e.target.closest('input[data-i]');
+  if(el && usersRows[+el.getAttribute('data-i')]) usersRows[+el.getAttribute('data-i')][el.getAttribute('data-f')] = el.value;
+});
+document.getElementById('users-holder').addEventListener('click', (e)=>{
+  const b = e.target.closest('button[data-act]');
+  if(!b || b.disabled) return;
+  const i = +b.getAttribute('data-i'), act = b.getAttribute('data-act');
+  if(act === 'del') usersRows.splice(i, 1);
+  else if(act === 'up' && i > 0) usersRows.splice(i - 1, 0, usersRows.splice(i, 1)[0]);
+  else if(act === 'down' && i < usersRows.length - 1) usersRows.splice(i + 1, 0, usersRows.splice(i, 1)[0]);
+  else if(act === 'addin') usersRows.splice(i + 1, 0, { section:false, name:'', password:'', photo:'', title:'' });
+  renderUsers();
+});
+document.getElementById('usr-add-user').addEventListener('click', ()=>{
+  usersRows.push({ section:false, name:'', password:'', photo:'', title:'' });
+  renderUsers();
+});
+document.getElementById('usr-add-section').addEventListener('click', ()=>{
+  usersRows.push({ section:true, name:'', password:'', photo:'', title:'' });
+  renderUsers();
+});
+document.getElementById('usr-save').addEventListener('click', async ()=>{
+  const btn = document.getElementById('usr-save');
+  const msgEl = document.getElementById('users-msg');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminSaveUsers', usersRows);
+    msgEl.innerHTML = '<div class="msg ok">Saved ✓ (' + res.count + ' rows)</div>';
+    await loadUsers();
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Save';
+});
+
 // ---------------- Refresh button (reloads what you are looking at) ----------------
 document.getElementById('refresh-btn').addEventListener('click', async ()=>{
   const btn = document.getElementById('refresh-btn');
@@ -2468,6 +2629,7 @@ document.getElementById('refresh-btn').addEventListener('click', async ()=>{
     else if(userIsAdmin && tab === 'dashboard') await loadDashboard();
     else if(userIsAdmin && tab === 'quality') await loadQuality();
     else if(userIsAdmin && tab === 'admin') await loadAdminTable();
+    else if(userIsAdmin && tab === 'users') await loadUsers();
     else if(currentNationalId){ await loadAttendance(); await loadStagePage(); }
     if(tab) autoLast[tab] = Date.now();
   }catch(e){ /* the tab shows its own error */ }

@@ -309,6 +309,33 @@
   .usr-btn.del:hover{ color:var(--danger); }
   .usr-hint{ font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.6; }
 
+  /* ===== New Hire Analytics ===== */
+  .an-big{ font-size:26px; font-weight:800; line-height:1.15; }
+  .an-sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .an-table td small{ color:var(--muted); font-weight:700; margin-left:4px; }
+  .an-table tr.an-all td{ background:var(--panel-2); font-weight:800; }
+  .an-filters input[type=date]{ width:auto; font-size:13px; padding:8px 10px; }
+  .an-periodcard{ margin-bottom:12px; }
+  .an-periodcard .an-pt{ font-size:12.5px; font-weight:800; margin-bottom:8px; color:var(--text); }
+  /* visible scrollbar (analytics lists and tables) */
+  .an-scroll{ overflow-y:auto; overflow-x:auto; padding-right:6px; scrollbar-width:thin; scrollbar-color:var(--amber) var(--panel-2); }
+  .an-scroll::-webkit-scrollbar{ width:10px; height:10px; }
+  .an-scroll::-webkit-scrollbar-track{ background:var(--panel-2); border-radius:6px; }
+  .an-scroll::-webkit-scrollbar-thumb{ background:var(--amber); border-radius:6px; border:2px solid var(--panel-2); }
+  .an-charts{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .an-donut-card{ background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .an-donut-title{ font-size:14px; font-weight:800; margin-bottom:12px; }
+  .an-donut-wrap{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  .an-donut{ width:150px; height:150px; flex:0 0 150px; }
+  .an-legend{ flex:1; min-width:150px; display:flex; flex-direction:column; gap:11px; }
+  .an-leg-top{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+  .an-leg-sq{ width:14px; height:14px; border-radius:4px; display:inline-block; flex:0 0 14px; }
+  .an-leg-n{ margin-left:auto; color:var(--muted); font-size:11.5px; font-weight:600; }
+  .an-leg-bar{ display:flex; align-items:center; gap:8px; margin-top:4px; }
+  .an-leg-pct{ font-size:11px; font-weight:800; min-width:38px; color:var(--muted); }
+  .an-leg-track{ flex:1; height:5px; background:var(--line); border-radius:4px; overflow:hidden; }
+  .an-leg-track > div{ height:100%; border-radius:4px; }
+
   /* ===== Attendance tab ===== */
   .att-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
   .att-table{ border-collapse:separate; border-spacing:0; min-width:100%; }
@@ -488,7 +515,7 @@
 
 <div class="wrap">
   <header>
-    <h1> Dashboard</h1>
+    <h1> Dashboard </h1>
     <div class="header-right">
       <div id="pf-chip">
         <div class="pf-avatar">
@@ -510,6 +537,7 @@
     <button class="tab-btn" data-tab="teams" id="teams-tab-btn" style="display:none">👥 Teams</button>
     <button class="tab-btn" data-tab="attendance" id="attendance-tab-btn" style="display:none">📅 Attendance</button>
     <button class="tab-btn" data-tab="users" id="users-tab-btn" style="display:none">👤 Users</button>
+    <button class="tab-btn" data-tab="analytics" id="analytics-tab-btn" style="display:none">📈 New Hire Analytics</button>
     <button class="tab-btn" data-tab="admin" id="admin-tab-btn" style="display:none">🛠 Admin</button>
   </div>
 
@@ -791,6 +819,54 @@
     </div>
   </div>
 
+  <!-- ===================== NEW HIRE ANALYTICS (owner only) ===================== -->
+  <div id="tab-analytics" style="display:none">
+    <div class="panel">
+      <h2>New Hire Analytics</h2>
+      <div class="dash-filters an-filters">
+        <select id="an-period">
+          <option value="week">By week</option><option value="month">By month</option>
+          <option value="day">By day</option><option value="year">By year</option><option value="all">All time</option>
+        </select>
+        <select id="an-shift">
+          <option value="">All shifts</option><option value="ON">OverNight</option><option value="N">Night</option><option value="M">Morning</option>
+        </select>
+        <input type="date" id="an-from" title="From (join date)">
+        <input type="date" id="an-to" title="To (join date)">
+        <button class="btn" id="an-apply-btn">Apply</button>
+        <button class="btn secondary" id="an-reset-btn">Reset</button>
+      </div>
+      <p class="usr-hint" style="margin:0">
+        Hires are grouped by their <b>Join Date</b>. <b>Failed</b> / <b>Dropped out</b> / <b>Production</b> = the State in the shift tab
+        (Production = <b>P</b>, passed the buffer batch). <b>Pass</b> = passed the trainers and still in the buffer batch; <b>Pending</b> = no result yet.
+        The percent is out of the hires of that row. A week starts on Saturday.
+      </p>
+      <div id="an-msg"></div>
+    </div>
+
+    <div class="dash-cards" id="an-cards"></div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">Outcomes % <span class="count-note">out of the hires in the filter</span></div>
+      <div class="an-charts" id="an-charts"></div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">By period &amp; shift <span class="count-note" id="an-rows-note"></span></div>
+      <div class="dash-table-wrap an-scroll" style="max-height:520px">
+        <table class="an-table" style="min-width:760px">
+          <thead><tr><th>Period</th><th>Shift</th><th>Hires</th><th>Failed</th><th>Dropped out</th><th>Production</th><th>Pass</th><th>Pending</th></tr></thead>
+          <tbody id="an-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel dash-section">
+      <div class="dash-section-title">Trainers — most active <span class="count-note">sessions = trainee days a trainer was written in Trainer P1 / P2 / P3</span></div>
+      <div id="an-trainers" class="an-scroll" style="max-height:440px"></div>
+    </div>
+  </div>
+
   <div id="tab-teams" style="display:none">
     <div id="teams-holder"><div class="empty">Loading…</div></div>
     <div id="teams-msg"></div>
@@ -1004,12 +1080,12 @@ const ADMIN_FNS = ['isAdminUnlocked','lockAdmin','adminSyncAllAttendance',
   'adminAddPerson','adminGetAllPeople','adminDeletePerson','adminGetTeams','adminSaveComment',
   'getDashboardData','getQualityData','adminSetupDailyTrigger','adminArrangeShiftSheets',
   'adminGetAttendance','adminSetAttendance','adminHideBatch','adminHideBufferBatch','adminHideBufferPerson',
-  'adminGetUsers','adminSaveUsers'];
+  'adminGetUsers','adminSaveUsers','adminGetAnalytics'];
 
 // ===== Hosting =====
 // Opened from the Apps Script URL  -> uses google.script.run (nothing to set).
 // Hosted elsewhere (GitHub Pages)  -> paste your Web App URL (ends with /exec) below.
-const API_URL = 'https://script.google.com/macros/s/AKfycbyHjDwLyLNYYXsm2NQjLHl_FyaEIxUHcRVO2MYYfgwv_NAEXbokq62cj0hSptlgkBo7JA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx5Dp212mlwYlQsHQdcEfmepLsXWhbbXY2gT1qAaKxb6YV0vbyP-okM9_bam1qB7Ul_hw/exec';
 const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
 function runScript(fnName, ...args){
@@ -1165,11 +1241,12 @@ function applyAdminUi(){
   document.getElementById('teams-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
   document.getElementById('attendance-tab-btn').style.display = userIsAdmin ? 'inline-block' : 'none';
   document.getElementById('users-tab-btn').style.display = isOwner ? 'inline-block' : 'none';
+  document.getElementById('analytics-tab-btn').style.display = isSV ? 'inline-block' : 'none';
   document.getElementById('logout-btn').style.display = userIsAdmin ? 'inline-flex' : 'none';
   const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset;
   if(!userIsAdmin && activeTab && activeTab.tab !== 'carousel'){
     switchTab('carousel');
-  } else if(userIsAdmin && !isSV && activeTab && activeTab.tab === 'admin'){
+  } else if(userIsAdmin && !isSV && activeTab && (activeTab.tab === 'admin' || activeTab.tab === 'analytics')){
     switchTab('teams');
   } else if(userIsAdmin && !isOwner && activeTab && (activeTab.tab === 'dashboard' || activeTab.tab === 'quality' || activeTab.tab === 'users')){
     switchTab('teams');
@@ -1207,7 +1284,7 @@ function renderProfile(){
 // ---------------- Tabs (Carousel vs Dashboard vs Quality vs Teams vs Admin) ----------------
 function switchTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab')===tab));
-  ['carousel','dashboard','quality','teams','attendance','users','admin'].forEach(t=>{
+  ['carousel','dashboard','quality','teams','attendance','users','analytics','admin'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = (t===tab) ? 'block' : 'none';
   });
   if(tab==='admin') loadAdminTable();
@@ -1216,6 +1293,7 @@ function switchTab(tab){
   if(tab==='teams') loadTeams();
   if(tab==='attendance') loadAdminAttendance();
   if(tab==='users') loadUsers();
+  if(tab==='analytics') loadAnalytics();
   autoLast[tab] = Date.now();
 }
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -2616,6 +2694,99 @@ document.getElementById('usr-save').addEventListener('click', async ()=>{
   btn.disabled = false; btn.textContent = 'Save';
 });
 
+// ---------------- NEW HIRE ANALYTICS (owner only) ----------------
+const AN_COLORS = { failed:'var(--danger)', dropped:'var(--phase2)', production:'var(--ok)', pass:'var(--mapless)', pending:'var(--amber)' };
+function anPct(n, total){ return total ? (Math.round((n * 1000) / total) / 10) + '%' : '0%'; }
+function anCell(c, key){ return '<td style="color:' + AN_COLORS[key] + '">' + c[key] + '<small>' + anPct(c[key], c.total) + '</small></td>'; }
+
+const AN_KEYS = [['failed','Failed'],['dropped','Dropped out'],['production','Production'],['pass','Pass (in buffer)'],['pending','Pending']];
+
+// a donut like the "Audience % by platform" chart: ring + legend with a bar and the percent
+function donutCard(title, c){
+  const R = 46, C = 2 * Math.PI * R;
+  let off = 0, segs = '';
+  if(c.total){
+    AN_KEYS.forEach(([k]) => {
+      if(!c[k]) return;
+      const len = C * c[k] / c.total;
+      segs += '<circle cx="60" cy="60" r="' + R + '" fill="none" stroke-width="16" style="stroke:' + AN_COLORS[k] + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"/>';
+      off += len;
+    });
+  }
+  const svg = '<svg class="an-donut" viewBox="0 0 120 120">' +
+    '<circle cx="60" cy="60" r="' + R + '" fill="none" stroke-width="16" style="stroke:var(--line)"/>' +
+    '<g transform="rotate(-90 60 60)">' + segs + '</g>' +
+    '<text x="60" y="61" text-anchor="middle" style="fill:var(--text);font-size:17px;font-weight:800">' + (c.total ? '100%' : '—') + '</text>' +
+    '<text x="60" y="76" text-anchor="middle" style="fill:var(--muted);font-size:8.5px;font-weight:700">' + c.total + ' hires</text></svg>';
+  const legend = AN_KEYS.map(([k, label]) => {
+    const pct = c.total ? Math.round(c[k] * 100 / c.total) : 0;
+    return '<div><div class="an-leg-top"><span class="an-leg-sq" style="background:' + AN_COLORS[k] + '"></span>' + label + '<span class="an-leg-n">' + c[k] + '</span></div>' +
+      '<div class="an-leg-bar"><span class="an-leg-pct">' + pct + '%</span><div class="an-leg-track"><div style="width:' + pct + '%;background:' + AN_COLORS[k] + '"></div></div></div></div>';
+  }).join('');
+  return '<div class="an-donut-card"><div class="an-donut-title">' + escapeHtml(title) + '</div><div class="an-donut-wrap">' + svg + '<div class="an-legend">' + legend + '</div></div></div>';
+}
+
+function renderAnalyticsCharts(res){
+  const byShift = {};
+  (res.rows || []).forEach(r => {
+    if(r.shift === 'ALL') return;
+    const s = byShift[r.shift] || (byShift[r.shift] = { name: r.shiftName, c: { total:0, failed:0, dropped:0, production:0, pass:0, pending:0 } });
+    Object.keys(s.c).forEach(k => { s.c[k] += r.counts[k]; });
+  });
+  let html = donutCard('All shifts', res.totals);
+  ['ON','N','M'].forEach(code => { if(byShift[code]) html += donutCard(byShift[code].name, byShift[code].c); });
+  document.getElementById('an-charts').innerHTML = html;
+}
+
+async function loadAnalytics(){
+  const msgEl = document.getElementById('an-msg');
+  msgEl.innerHTML = '';
+  try{
+    const res = await runScript('adminGetAnalytics', {
+      period: document.getElementById('an-period').value,
+      shift: document.getElementById('an-shift').value,
+      from: document.getElementById('an-from').value,
+      to: document.getElementById('an-to').value
+    });
+    renderAnalytics(res);
+  }catch(e){
+    msgEl.innerHTML = '<div class="msg err">' + escapeHtml(errText(e)) + '</div>';
+  }
+}
+
+function renderAnalytics(res){
+  const t = res.totals;
+  renderAnalyticsCharts(res);
+  const card = (title, key) => '<div class="dash-card"><div class="dc-name">' + title + '</div>' +
+    '<div class="an-big" style="color:' + AN_COLORS[key] + '">' + anPct(t[key], t.total) + '</div><div class="an-sub">' + t[key] + ' of ' + t.total + '</div></div>';
+  document.getElementById('an-cards').innerHTML =
+    '<div class="dash-card"><div class="dc-name">Hires</div><div class="an-big">' + t.total + '</div><div class="an-sub">in this filter</div></div>' +
+    card('Failed', 'failed') + card('Dropped out', 'dropped') + card('Production', 'production') + card('Pass (in buffer)', 'pass') + card('Pending', 'pending');
+
+  const rows = res.rows || [];
+  document.getElementById('an-rows-note').textContent = rows.length ? '' : 'no data';
+  document.getElementById('an-rows').innerHTML = rows.length ? rows.map(r => {
+    const c = r.counts;
+    return '<tr class="' + (r.shift === 'ALL' ? 'an-all' : '') + '"><td>' + escapeHtml(r.label) + '</td><td>' + escapeHtml(r.shiftName) + '</td><td>' + c.total + '</td>' +
+      anCell(c, 'failed') + anCell(c, 'dropped') + anCell(c, 'production') + anCell(c, 'pass') + anCell(c, 'pending') + '</tr>';
+  }).join('') : '<tr><td colspan="8" class="empty">No hires in this filter.</td></tr>';
+
+  const chips = list => list.length ? list.map(x => '<span class="dash-chip">' + escapeHtml(x.name) + '<b>' + x.sessions + '</b> <span style="color:var(--muted)">· ' + x.trainees + ' trainees</span></span>').join('') : '<span class="an-sub">No trainers written yet.</span>';
+  const per = res.trainersByPeriod || [];
+  document.getElementById('an-trainers').innerHTML =
+    '<div class="an-periodcard"><div class="an-pt">Whole filter</div><div class="dash-chips">' + chips(res.topTrainers || []) + '</div></div>' +
+    (per.length > 1 || (per[0] && per[0].key !== 'all') ? per.map(p => '<div class="an-periodcard"><div class="an-pt">' + escapeHtml(p.label) + '</div><div class="dash-chips">' + chips(p.trainers) + '</div></div>').join('') : '');
+}
+document.getElementById('an-apply-btn').addEventListener('click', loadAnalytics);
+document.getElementById('an-reset-btn').addEventListener('click', ()=>{
+  document.getElementById('an-period').value = 'week';
+  document.getElementById('an-shift').value = '';
+  document.getElementById('an-from').value = '';
+  document.getElementById('an-to').value = '';
+  loadAnalytics();
+});
+['an-period','an-shift'].forEach(id => document.getElementById(id).addEventListener('change', loadAnalytics));
+
 // ---------------- Refresh button (reloads what you are looking at) ----------------
 document.getElementById('refresh-btn').addEventListener('click', async ()=>{
   const btn = document.getElementById('refresh-btn');
@@ -2630,6 +2801,7 @@ document.getElementById('refresh-btn').addEventListener('click', async ()=>{
     else if(userIsAdmin && tab === 'quality') await loadQuality();
     else if(userIsAdmin && tab === 'admin') await loadAdminTable();
     else if(userIsAdmin && tab === 'users') await loadUsers();
+    else if(userIsAdmin && tab === 'analytics') await loadAnalytics();
     else if(currentNationalId){ await loadAttendance(); await loadStagePage(); }
     if(tab) autoLast[tab] = Date.now();
   }catch(e){ /* the tab shows its own error */ }
